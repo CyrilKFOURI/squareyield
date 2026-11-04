@@ -1,0 +1,179 @@
+/* Workbench layout: a continuous docked surface, panels separated by 1 px lines (docs/UI_UX.md). */
+.cy-app {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--sidebar) 1fr;
+  background: var(--bg);
+  color: var(--ink-1);
+  font: 400 var(--fs-base) / 1.45 var(--font-ui);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+  -webkit-font-smoothing: antialiased;
+}
+.cy-app *,
+.cy-app *::before,
+.cy-app *::after { box-sizing: border-box; }
+.cy-app a { color: inherit; text-decoration: none; }
+.cy-app button { font: inherit; color: inherit; }
+.cy-app :focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* sidebar */
+.cy-sidebar { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--surface); min-height: 0; }
+.cy-brand { display: flex; align-items: center; gap: 10px; height: var(--topbar); padding: 0 14px; border-bottom: 1px solid var(--line); }
+.cy-brand-mark { width: 28px; height: 22px; background: var(--ink-1); -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat; }
+.cy-brand-name { font: 400 15px/1 var(--font-brand); letter-spacing: 0.14em; }
+.cy-nav { display: flex; flex-direction: column; padding: 8px 0; overflow-y: auto; }
+.cy-nav-group { padding: 12px 14px 4px; font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.cy-nav a { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 14px; color: var(--ink-2); border-left: 2px solid transparent; }
+.cy-nav a:hover { background: var(--surface-hover); color: var(--ink-1); }
+.cy-nav a[aria-current='page'] { color: var(--ink-1); border-left-color: var(--ink-1); background: var(--surface-2); font-weight: 500; }
+.cy-sidebar-foot { margin-top: auto; border-top: 1px solid var(--line); padding: 8px 14px; display: flex; gap: 6px; align-items: center; color: var(--ink-3); font-size: var(--fs-small); }
+
+/* main column */
+.cy-main { display: grid; grid-template-rows: var(--topbar) auto 1fr; min-width: 0; min-height: 0; }
+.cy-topbar { display: flex; align-items: center; gap: 16px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.cy-title { font-size: var(--fs-title); font-weight: 600; white-space: nowrap; }
+.cy-crumbs { display: flex; gap: 6px; color: var(--ink-3); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cy-crumbs a:hover { color: var(--ink-1); }
+.cy-topbar-tools { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.cy-content { overflow: auto; min-height: 0; }
+
+/* filter bar: one flat strip of labelled controls */
+.cy-filters { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 1px solid var(--line); background: var(--surface); }
+.cy-filter { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 14px; border-right: 1px solid var(--line); min-height: 52px; }
+.cy-filter-label { font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 4px; align-items: center; }
+
+/* controls */
+.cy-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
+.cy-seg button { border: 0; background: transparent; padding: 3px 9px; font-size: var(--fs-small); color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.cy-seg button + button { border-left: 1px solid var(--line); }
+.cy-seg button:hover { background: var(--surface-hover); color: var(--ink-1); }
+.cy-seg button[aria-pressed='true'] { background: var(--ink-1); color: var(--bg); }
+.cy-select, .cy-input { height: 26px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--ink-1); padding: 0 8px; font: inherit; font-size: var(--fs-small); }
+.cy-input { width: 100%; }
+.cy-check { display: inline-flex; gap: 6px; align-items: center; font-size: var(--fs-small); color: var(--ink-2); cursor: pointer; }
+.cy-button { height: 28px; padding: 0 12px; border: 1px solid var(--ink-1); border-radius: var(--radius); background: var(--ink-1); color: var(--bg); font-size: var(--fs-small); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.cy-button.ghost { background: transparent; color: var(--ink-1); border-color: var(--line-strong); }
+.cy-button:hover { opacity: 0.88; }
+.cy-app a.cy-button { color: var(--bg); }
+.cy-app a.cy-button.ghost { color: var(--ink-1); }
+
+/* docked panels on a grid; lines come from the panels' own borders */
+.cy-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-content: start; }
+.cy-panel { background: var(--surface); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; display: flex; flex-direction: column; }
+.cy-panel-head { display: flex; align-items: center; gap: 8px; min-height: var(--panel-head); padding: 0 14px; border-bottom: 1px solid var(--line); }
+.cy-panel-title { font-size: var(--fs-micro); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; display: flex; gap: 5px; align-items: center; }
+.cy-panel-tools { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.cy-panel-body { padding: 12px 14px; min-width: 0; flex: 1; }
+.cy-panel-body.flush { padding: 0; }
+.cy-note { font-size: var(--fs-small); color: var(--ink-3); }
+
+/* KPI ribbon: one continuous strip split by 1 px rules */
+/* wraps onto a second row instead of scrolling; the -1px margins keep single 1 px rules */
+.cy-ribbon { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); border-bottom: 1px solid var(--line); background: var(--surface); overflow: hidden; }
+.cy-kpi { padding: 10px 14px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 -1px -1px 0; min-width: 0; }
+.cy-kpi-label { font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 4px; align-items: center; line-height: 1.3; min-height: 14px; }
+.cy-kpi-value { font-size: var(--fs-value-lg); font-weight: 600; margin-top: 2px; white-space: nowrap; }
+.cy-kpi-detail { font-size: var(--fs-small); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* dense tables */
+.cy-table-wrap { overflow: auto; }
+.cy-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+.cy-table th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); text-align: left; font-weight: 500; font-size: var(--fs-micro); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); padding: 7px 10px; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+.cy-table th.num, .cy-table td.num { text-align: right; }
+.cy-table th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+.cy-table td { padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cy-table tbody tr:hover td { background: var(--surface-hover); }
+.cy-table tbody tr.selected td { background: var(--accent-soft); }
+.cy-table tbody tr[data-href] { cursor: pointer; }
+
+/* text levels and tones */
+.ink-2 { color: var(--ink-2); }
+.ink-3 { color: var(--ink-3); }
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+.warn { color: var(--warn); }
+.cy-badge { display: inline-block; padding: 0 5px; border: 1px solid var(--line-strong); border-radius: 2px; font-size: var(--fs-micro); letter-spacing: 0.04em; color: var(--ink-2); white-space: nowrap; }
+.cy-badge.warn { border-color: var(--warn); color: var(--warn); }
+
+/* ⓘ tooltip */
+.cy-info { position: relative; display: inline-flex; width: 13px; height: 13px; border: 1px solid var(--line-strong); border-radius: 50%; font: 600 9px/11px var(--font-ui); justify-content: center; color: var(--ink-3); cursor: help; text-transform: none; letter-spacing: 0; }
+.cy-info:hover, .cy-info:focus { color: var(--ink-1); border-color: var(--ink-2); }
+.cy-info-pop { display: none; position: absolute; z-index: 50; top: 18px; left: -8px; width: 300px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); color: var(--ink-1); font: 400 var(--fs-small)/1.45 var(--font-ui); text-align: left; white-space: normal; }
+.cy-info:hover .cy-info-pop, .cy-info:focus .cy-info-pop { display: block; }
+.cy-info-pop b { display: block; margin-bottom: 4px; }
+.cy-info-pop p { margin: 4px 0 0; color: var(--ink-2); }
+
+/* states */
+.cy-empty, .cy-error { padding: 24px 14px; color: var(--ink-3); font-size: var(--fs-small); }
+.cy-error { color: var(--neg); display: flex; gap: 12px; align-items: center; }
+.cy-banner { padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--warn-soft); color: var(--warn); font-size: var(--fs-small); }
+
+/* narrow screens: sidebar becomes a top strip */
+@media (max-width: 900px) {
+  .cy-app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .cy-sidebar { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .cy-brand { border-bottom: 0; }
+  .cy-nav { flex-direction: row; padding: 0; }
+  .cy-nav-group, .cy-sidebar-foot { display: none; }
+  .cy-nav a { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; height: var(--topbar); }
+  .cy-nav a[aria-current='page'] { border-bottom-color: var(--ink-1); }
+  .cy-grid > .cy-panel { grid-column: 1 / -1 !important; }
+  .cy-filter { flex: 1 1 45%; }
+}
+
+/* place search: input with a flat result list docked under it */
+.cy-search { position: relative; min-width: 220px; }
+.cy-search-list { position: absolute; z-index: 30; top: 100%; left: 0; right: 0; margin: 0; padding: 0; list-style: none;
+  background: var(--surface); border: 1px solid var(--line-strong); border-top: 0; max-height: 280px; overflow: auto; }
+.cy-search-list button { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 5px 8px; border: 0;
+  border-bottom: 1px solid var(--line); background: none; color: var(--ink-1); font: inherit; font-size: var(--fs-small); text-align: left; cursor: pointer; }
+.cy-search-list button:hover, .cy-search-list button:focus-visible { background: var(--surface-2); outline: none; }
+
+/* chips: selected places in a comparison, flat with a colour key */
+.cy-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cy-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 4px 0 8px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius); background: var(--surface); font-size: var(--fs-small); }
+.cy-chip i { width: 10px; height: 3px; display: inline-block; }
+.cy-chip button { border: 0; background: none; color: var(--ink-3); cursor: pointer; font: inherit; padding: 0 4px; }
+.cy-chip button:hover { color: var(--neg); }
+
+/* place page: identity line, section anchors, DPE strip, score */
+.cy-place-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: var(--fs-small); }
+.cy-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--line-strong); border-radius: var(--radius); color: var(--ink-2); font-size: var(--fs-micro); letter-spacing: 0.04em; }
+.cy-tag.warn { border-color: var(--warn); color: var(--warn); }
+.cy-anchors { display: flex; overflow-x: auto; border-top: 1px solid var(--line); }
+.cy-anchors a { padding: 7px 12px; color: var(--ink-2); text-decoration: none; font-size: var(--fs-small); white-space: nowrap; border-right: 1px solid var(--line); }
+.cy-anchors a:hover { background: var(--surface-2); color: var(--ink-1); }
+.cy-panel[id] { scroll-margin-top: 8px; }
+.cy-dpe { display: flex; height: 22px; border: 1px solid var(--line); margin-bottom: 6px; }
+.cy-dpe span { display: flex; align-items: center; justify-content: center; color: #fff; font-size: var(--fs-micro); font-weight: 600; min-width: 0; }
+.cy-score { padding: 4px 0 8px; }
+.cy-score b { font-size: 28px; font-weight: 600; }
+
+/* number input with its unit; plain lists */
+.cy-unit { display: inline-flex; align-items: center; gap: 4px; }
+.cy-unit .cy-input { width: 90px; text-align: right; }
+.cy-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+
+/* compare: grouped rows, colour key in headers, best value underlined */
+.cy-compare th i { display: inline-block; width: 10px; height: 3px; margin-right: 6px; vertical-align: middle; }
+.cy-compare .cy-group td { background: var(--surface-2); color: var(--ink-3); font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; }
+.cy-compare td.cy-best { color: var(--ink-1); font-weight: 600; text-decoration: underline; text-decoration-color: var(--pos); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* simulator: stacked labelled inputs; tab buttons share the anchor strip */
+.cy-sim-form { padding: 10px 14px; display: grid; gap: 10px; }
+.cy-sim-form fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 8px 0 0; display: grid; gap: 6px; }
+.cy-sim-form legend { padding: 0 6px 0 0; font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.cy-sim-form label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: var(--fs-small); color: var(--ink-2); }
+.cy-anchors button { padding: 7px 14px; border: 0; border-right: 1px solid var(--line); background: none; color: var(--ink-2); font: inherit; font-size: var(--fs-small); cursor: pointer; }
+.cy-anchors button.active { color: var(--ink-1); box-shadow: inset 0 -2px 0 var(--ink-1); }
+.cy-anchors button:hover { background: var(--surface-2); }
+.cy-sim-form .cy-unit .cy-input { width: 104px; }
+
+/* home: four entry paths in one docked strip */
+.cy-paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border: 1px solid var(--line); }
+.cy-paths a { display: grid; gap: 4px; padding: 12px 14px; border-right: 1px solid var(--line); margin-right: -1px; }
+.cy-paths a:hover { background: var(--surface-2); }
+.cy-paths b { color: var(--ink-1); font-weight: 600; }
+.cy-paths span { color: var(--ink-2); font-size: var(--fs-small); }

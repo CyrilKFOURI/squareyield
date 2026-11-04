@@ -1,0 +1,74 @@
+{
+  "comment": "Typical deal of a market cell, computed identically by apps/app/src/core-kpi/typical-deal.ts and pipeline/src/rea_pipeline/deals.py. Expected values come from analyzeDeal (core-kpi) with the default financing.",
+  "cases": [
+    {
+      "name": "Angers T2 flat",
+      "input": {
+        "price": 150000,
+        "surface_m2": 45,
+        "rent_m2": 13.5,
+        "property_type": "apartment",
+        "tfpb_rate": 0.5665
+      },
+      "expected": {
+        "price": 150000,
+        "surface_m2": 45,
+        "rent_monthly": 540,
+        "taxe_fonciere_yearly": 759.0819,
+        "total_cost": 161250,
+        "gross_yield": 0.0402,
+        "net_yield": 0.0294,
+        "cap_rate": 0.0316,
+        "payment_monthly": 877.9478,
+        "cash_flow_monthly": -483.4546,
+        "quick_test_monthly": -499.9478
+      }
+    },
+    {
+      "name": "Paris 11e T1",
+      "input": {
+        "price": 280000,
+        "surface_m2": 28,
+        "rent_m2": 34,
+        "property_type": "apartment",
+        "tfpb_rate": 0.2086
+      },
+      "expected": {
+        "price": 280000,
+        "surface_m2": 28,
+        "rent_monthly": 910,
+        "taxe_fonciere_yearly": 471.0323,
+        "total_cost": 301000,
+        "gross_yield": 0.0363,
+        "net_yield": 0.0295,
+        "cap_rate": 0.0317,
+        "payment_monthly": 1638.8359,
+        "cash_flow_monthly": -898.1302,
+        "quick_test_monthly": -1001.8359
+      }
+    },
+    {
+      "name": "Gueret house 4 rooms",
+      "input": {
+        "price": 110000,
+        "surface_m2": 95,
+        "rent_m2": 7.5,
+        "property_type": "house",
+        "tfpb_rate": null
+      },
+      "expected": {
+        "price": 110000,
+        "surface_m2": 95,
+        "rent_monthly": 665,
+        "taxe_fonciere_yearly": 665,
+        "total_cost": 118250,
+        "gross_yield": 0.0675,
+        "net_yield": 0.0519,
+        "cap_rate": 0.0558,
+        "payment_monthly": 643.8284,
+        "cash_flow_monthly": -132.6409,
+        "quick_test_monthly": -178.3284
+      }
+    }
+  ]
+}

@@ -1,0 +1,291 @@
+{
+  "checked_on": "2026-10-20",
+  "source": "service-public.fr simulator + recherche-appartement-ou-maison.com list updated 2026-09-10 (71 communes). Lyon/Villeurbanne: 2025-10-14 court decision under appeal, rent control still applied.",
+  "check_yearly": true,
+  "communes": [
+    {
+      "name": "Ahetze",
+      "departement": "64"
+    },
+    {
+      "name": "Anglet",
+      "departement": "64"
+    },
+    {
+      "name": "Arbonne",
+      "departement": "64"
+    },
+    {
+      "name": "Arcangues",
+      "departement": "64"
+    },
+    {
+      "name": "Ascain",
+      "departement": "64"
+    },
+    {
+      "name": "Aubervilliers",
+      "departement": "93"
+    },
+    {
+      "name": "Bagnolet",
+      "departement": "93"
+    },
+    {
+      "name": "Bassussarry",
+      "departement": "64"
+    },
+    {
+      "name": "Bayonne",
+      "departement": "64"
+    },
+    {
+      "name": "Biarritz",
+      "departement": "64"
+    },
+    {
+      "name": "Bidart",
+      "departement": "64"
+    },
+    {
+      "name": "Biriatou",
+      "departement": "64"
+    },
+    {
+      "name": "Bobigny",
+      "departement": "93"
+    },
+    {
+      "name": "Bondy",
+      "departement": "93"
+    },
+    {
+      "name": "Boucau",
+      "departement": "64"
+    },
+    {
+      "name": "Bordeaux",
+      "departement": "33"
+    },
+    {
+      "name": "Bresson",
+      "departement": "38"
+    },
+    {
+      "name": "Ciboure",
+      "departement": "64"
+    },
+    {
+      "name": "Claix",
+      "departement": "38"
+    },
+    {
+      "name": "Domène",
+      "departement": "38"
+    },
+    {
+      "name": "Échirolles",
+      "departement": "38"
+    },
+    {
+      "name": "Épinay-sur-Seine",
+      "departement": "93"
+    },
+    {
+      "name": "Eybens",
+      "departement": "38"
+    },
+    {
+      "name": "Fontaine",
+      "departement": "38"
+    },
+    {
+      "name": "Fontanil-Cornillon",
+      "departement": "38"
+    },
+    {
+      "name": "Gières",
+      "departement": "38"
+    },
+    {
+      "name": "Grenoble",
+      "departement": "38"
+    },
+    {
+      "name": "Guéthary",
+      "departement": "64"
+    },
+    {
+      "name": "Hellemmes-Lille",
+      "departement": "59"
+    },
+    {
+      "name": "Hendaye",
+      "departement": "64"
+    },
+    {
+      "name": "Jatxou",
+      "departement": "64"
+    },
+    {
+      "name": "La Courneuve",
+      "departement": "93"
+    },
+    {
+      "name": "La Tronche",
+      "departement": "38"
+    },
+    {
+      "name": "Lahonce",
+      "departement": "64"
+    },
+    {
+      "name": "Larressore",
+      "departement": "64"
+    },
+    {
+      "name": "Le Pont-de-Claix",
+      "departement": "38"
+    },
+    {
+      "name": "Le Pré-Saint-Gervais",
+      "departement": "93"
+    },
+    {
+      "name": "Les Lilas",
+      "departement": "93"
+    },
+    {
+      "name": "L'Île-Saint-Denis",
+      "departement": "93"
+    },
+    {
+      "name": "Lille",
+      "departement": "59"
+    },
+    {
+      "name": "Lomme",
+      "departement": "59"
+    },
+    {
+      "name": "Lyon",
+      "departement": "69"
+    },
+    {
+      "name": "Meylan",
+      "departement": "38"
+    },
+    {
+      "name": "Montreuil",
+      "departement": "93"
+    },
+    {
+      "name": "Montpellier",
+      "departement": "34"
+    },
+    {
+      "name": "Mouguerre",
+      "departement": "64"
+    },
+    {
+      "name": "Murianette",
+      "departement": "38"
+    },
+    {
+      "name": "Noisy-le-Sec",
+      "departement": "93"
+    },
+    {
+      "name": "Pantin",
+      "departement": "93"
+    },
+    {
+      "name": "Paris",
+      "departement": "75"
+    },
+    {
+      "name": "Pierrefitte-sur-Seine",
+      "departement": "93"
+    },
+    {
+      "name": "Poisat",
+      "departement": "38"
+    },
+    {
+      "name": "Romainville",
+      "departement": "93"
+    },
+    {
+      "name": "Saint-Denis",
+      "departement": "93"
+    },
+    {
+      "name": "Saint-Égrève",
+      "departement": "38"
+    },
+    {
+      "name": "Saint-Jean-de-Luz",
+      "departement": "64"
+    },
+    {
+      "name": "Saint-Martin-d'Hères",
+      "departement": "38"
+    },
+    {
+      "name": "Saint-Ouen-sur-Seine",
+      "departement": "93"
+    },
+    {
+      "name": "Saint-Pierre-d'Irube",
+      "departement": "64"
+    },
+    {
+      "name": "Sassenage",
+      "departement": "38"
+    },
+    {
+      "name": "Seyssins",
+      "departement": "38"
+    },
+    {
+      "name": "Seyssinet-Pariset",
+      "departement": "38"
+    },
+    {
+      "name": "Stains",
+      "departement": "93"
+    },
+    {
+      "name": "Urcuit",
+      "departement": "64"
+    },
+    {
+      "name": "Urrugne",
+      "departement": "64"
+    },
+    {
+      "name": "Ustaritz",
+      "departement": "64"
+    },
+    {
+      "name": "Varces-Allières-et-Risset",
+      "departement": "38"
+    },
+    {
+      "name": "Venon",
+      "departement": "38"
+    },
+    {
+      "name": "Villefranque",
+      "departement": "64"
+    },
+    {
+      "name": "Villeurbanne",
+      "departement": "69"
+    },
+    {
+      "name": "Villetaneuse",
+      "departement": "93"
+    }
+  ]
+}

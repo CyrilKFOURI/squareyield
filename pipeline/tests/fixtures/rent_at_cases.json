@@ -1,0 +1,64 @@
+{
+ "surface_bounds": [
+  25,
+  110
+ ],
+ "cases": [
+  {
+   "ref_rent_m2": 14.55559,
+   "ref_surface": 52,
+   "slope": -0.36707,
+   "surface_m2": 52,
+   "rent_m2": 14.55559
+  },
+  {
+   "ref_rent_m2": 14.55559,
+   "ref_surface": 52,
+   "slope": -0.36707,
+   "surface_m2": 26,
+   "rent_m2": 18.772793
+  },
+  {
+   "ref_rent_m2": 14.55559,
+   "ref_surface": 52,
+   "slope": -0.36707,
+   "surface_m2": 18,
+   "rent_m2": 19.045015
+  },
+  {
+   "ref_rent_m2": 14.55559,
+   "ref_surface": 52,
+   "slope": -0.36707,
+   "surface_m2": 140,
+   "rent_m2": 11.055774
+  },
+  {
+   "ref_rent_m2": 13.26417,
+   "ref_surface": 92,
+   "slope": -0.36707,
+   "surface_m2": 95,
+   "rent_m2": 13.108852
+  },
+  {
+   "ref_rent_m2": 13.26417,
+   "ref_surface": 92,
+   "slope": -0.36707,
+   "surface_m2": 60,
+   "rent_m2": 15.517498
+  },
+  {
+   "ref_rent_m2": 20.0,
+   "ref_surface": 52,
+   "slope": 0.0,
+   "surface_m2": 70,
+   "rent_m2": 20.0
+  },
+  {
+   "ref_rent_m2": 11.0,
+   "ref_surface": 52,
+   "slope": -0.8,
+   "surface_m2": 30,
+   "rent_m2": 17.080413
+  }
+ ]
+}

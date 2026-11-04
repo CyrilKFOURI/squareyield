@@ -1,0 +1,13 @@
+{
+  "comment": "Market score M17 (docs/KPI_SPEC.md). Each criterion becomes a percentile rank among communes with >= min_sales sales; direction 'low' means lower is better. Missing criteria are dropped and weights renormalised.",
+  "min_sales": 30,
+  "criteria": {
+    "gross_yield": {"weight": 0.30, "direction": "high", "label": "Rentabilité brute"},
+    "cagr": {"weight": 0.15, "direction": "high", "label": "Évolution des prix"},
+    "population_growth_yearly": {"weight": 0.15, "direction": "high", "label": "Croissance de la population"},
+    "jobs_growth_yearly": {"weight": 0.10, "direction": "high", "label": "Croissance de l'emploi"},
+    "vacancy_rate": {"weight": 0.15, "direction": "low", "label": "Logements vacants"},
+    "share_fg": {"weight": 0.10, "direction": "low", "label": "Passoires énergétiques F/G"},
+    "n_sales": {"weight": 0.05, "direction": "high", "label": "Volume de ventes (liquidité)"}
+  }
+}

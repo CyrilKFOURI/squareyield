@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Rendement immobilier : analyser ce bien",
+  "version": "0.1.0",
+  "description": "Ouvre l'analyse (prix, loyer, rentabilité, risques) du bien affiché dans l'annonce. Ne lit que la page ouverte, quand vous cliquez.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_title": "Analyser ce bien",
+    "default_popup": "popup.html"
+  }
+}

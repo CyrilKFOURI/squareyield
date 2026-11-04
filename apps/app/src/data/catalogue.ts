@@ -1,0 +1,176 @@
+// One catalogue of every indicator (docs/KPI_SPEC.md): the ⓘ tooltips and the Méthode page read it,
+// so a definition is written once. Market KPIs are precomputed by the pipeline; deal KPIs are
+// computed by core-kpi from the user's inputs (or precomputed for the typical property).
+
+export type Segmentation = 'type' | 'size' | 'condition' | 'period' | 'area';
+
+export type KpiEntry = {
+  /** KPI_SPEC id (M1…M17, D1…D18) or X* for indicators added by 013. */
+  id: string;
+  /** Field names and map metric bases this entry describes. */
+  keys: string[];
+  label: string;
+  unit: string;
+  definition: string;
+  howToRead: string;
+  source: string;
+  /** Filters the value depends on; an empty list means "same for every property of the area". */
+  segments: Segmentation[];
+  higherIsBetter: boolean | null;
+};
+
+const DVF = 'DVF (DGFiP) — ventes signées, logements anciens';
+const ANIL = 'ANIL, carte des loyers — loyers d’annonce non meublés, charges comprises';
+const INSEE = 'INSEE, recensement et Filosofi';
+const MARKET: Segmentation[] = ['type', 'size', 'condition', 'period', 'area'];
+const RENT: Segmentation[] = ['type', 'size', 'period', 'area'];
+const DEAL = 'Calcul sur vos hypothèses (simulateur) ; bien type : prix et surface médians, financement par défaut';
+
+export const KPI_CATALOGUE: KpiEntry[] = [
+  { id: 'M1', keys: ['price', 'median_price_m2'], label: 'Prix médian au m²', unit: '€/m²',
+    definition: 'Moitié des ventes au-dessus, moitié en dessous, après retrait des 1 % extrêmes.',
+    howToRead: 'Prix déjà signés chez le notaire : le passé, pas les annonces actuelles.', source: DVF,
+    segments: MARKET, higherIsBetter: false },
+  { id: 'M2', keys: ['p25_price_m2', 'p75_price_m2'], label: 'Fourchette de prix (P25–P75)', unit: '€/m²',
+    definition: 'La moitié centrale des ventes : 25 % en dessous de P25, 25 % au-dessus de P75.',
+    howToRead: 'Un bien sous P25 est bon marché pour ce segment, au-dessus de P75 il est cher.', source: DVF,
+    segments: MARKET, higherIsBetter: null },
+  { id: 'M3', keys: ['n_sales', 'sales'], label: 'Nombre de ventes', unit: 'ventes',
+    definition: 'Ventes retenues dans la cellule (type × taille × période × territoire).',
+    howToRead: 'Sous 30 ventes la médiane bouge beaucoup : fiabilité faible. Sous 10, rien n’est publié.',
+    source: DVF, segments: MARKET, higherIsBetter: true },
+  { id: 'M4', keys: ['yoy_change'], label: 'Évolution sur un an', unit: '%',
+    definition: 'Médiane de la période comparée à la même période un an plus tôt.',
+    howToRead: 'Les années incomplètes se comparent par semestre seulement.', source: DVF,
+    segments: MARKET, higherIsBetter: null },
+  { id: 'M5', keys: ['trend', 'cagr'], label: 'Évolution annuelle moyenne', unit: '% / an',
+    definition: 'Taux de croissance annuel moyen depuis la première année complète.',
+    howToRead: 'Tendance de fond, moins sensible à une année atypique.', source: DVF,
+    segments: MARKET, higherIsBetter: null },
+  { id: 'M6', keys: ['median_price', 'typical_price'], label: 'Prix médian d’un bien', unit: '€',
+    definition: 'Prix total médian des ventes de la cellule.', howToRead: 'Le budget d’un bien type.',
+    source: DVF, segments: MARKET, higherIsBetter: null },
+  { id: 'M7', keys: ['median_surface_m2'], label: 'Surface médiane', unit: 'm²',
+    definition: 'Surface habitable médiane (cadastre, pas Carrez).', howToRead: 'Ce que « T3 » veut dire ici.',
+    source: DVF, segments: MARKET, higherIsBetter: null },
+  { id: 'M8', keys: ['rent_m2', 'rent'], label: 'Loyer d’annonce', unit: '€/m²/mois',
+    definition: 'Loyer prédit par l’ANIL, lu sur la courbe de la commune à la surface médiane de la cellule.',
+    howToRead: 'Charges comprises, nouvelles locations non meublées. Intervalle à 95 % affiché.', source: ANIL,
+    segments: RENT, higherIsBetter: null },
+  { id: 'M9', keys: ['yield', 'gross_yield'], label: 'Rentabilité brute', unit: '%',
+    definition: '12 × loyer au m² / prix médian au m² de la même cellule.',
+    howToRead: 'Charges comprises, avant frais et impôts. Une valeur très haute signale souvent un marché à risque.',
+    source: `${DVF} ; ${ANIL}`, segments: RENT, higherIsBetter: true },
+  { id: 'M10', keys: ['price_to_rent_years'], label: 'Années de loyer pour le prix', unit: 'ans',
+    definition: 'Prix / loyer annuel.', howToRead: 'Plus c’est bas, plus le bien se rembourse vite.',
+    source: `${DVF} ; ${ANIL}`, segments: RENT, higherIsBetter: false },
+  { id: 'M11', keys: ['vacancy', 'vacancy_rate', 'vacancy_change_pts'], label: 'Logements vacants', unit: '%',
+    definition: 'Part des logements vacants (recensement) et évolution depuis 2017.',
+    howToRead: 'Au-delà de 10 %, la demande locative est faible.', source: INSEE, segments: ['area'],
+    higherIsBetter: false },
+  { id: 'M12', keys: ['population_growth', 'population_growth_yearly'], label: 'Croissance de la population',
+    unit: '% / an', definition: 'Évolution annuelle moyenne de la population entre deux recensements.',
+    howToRead: 'Une population qui baisse fait baisser la demande.', source: INSEE, segments: ['area'],
+    higherIsBetter: true },
+  { id: 'M12b', keys: ['jobs_growth_yearly', 'jobs'], label: 'Croissance de l’emploi', unit: '% / an',
+    definition: 'Évolution annuelle moyenne du nombre d’emplois au lieu de travail entre deux recensements.',
+    howToRead: 'Des emplois qui arrivent attirent des locataires.', source: INSEE, segments: ['area'],
+    higherIsBetter: true },
+  { id: 'M13', keys: ['median_living_standard', 'rent_to_income'], label: 'Revenus et effort de loyer', unit: '€ / %',
+    definition: 'Niveau de vie médian ; loyer annuel d’un bien type / niveau de vie médian.',
+    howToRead: 'Au-delà d’un tiers, les loyers sont lourds pour les habitants.', source: `${INSEE} ; ${ANIL}`,
+    segments: ['area', 'type'], higherIsBetter: null },
+  { id: 'M14', keys: ['share_fg'], label: 'Passoires énergétiques F/G', unit: '%',
+    definition: 'Part des DPE classés F ou G depuis 2021, par type de logement.',
+    howToRead: 'G interdit à la location depuis 2025, F en 2028, E en 2034.', source: 'ADEME, DPE logements existants',
+    segments: ['area', 'type'], higherIsBetter: false },
+  { id: 'M15', keys: ['tfpb_rate'], label: 'Taux de taxe foncière', unit: '%',
+    definition: 'Taux global voté (commune + intercommunalité + taxes spéciales).',
+    howToRead: 'S’applique à la moitié de la valeur locative cadastrale.', source: 'DGFiP, REI',
+    segments: ['area'], higherIsBetter: false },
+  { id: 'M16', keys: ['rent_control'], label: 'Encadrement des loyers', unit: '',
+    definition: 'Commune où un nouveau bail ne peut dépasser le loyer de référence majoré.',
+    howToRead: 'Plafonne le loyer et donc la rentabilité.', source: 'Arrêtés préfectoraux', segments: ['area'],
+    higherIsBetter: null },
+  { id: 'M17', keys: ['score'], label: 'Score de marché', unit: '/ 100',
+    definition: 'Moyenne pondérée des rangs (rentabilité, prix, population, vacance, emploi, passoires, ventes).',
+    howToRead: '50 = commune médiane parmi celles d’au moins 30 ventes, par type.', source: 'Calcul Cyfouri',
+    segments: ['area', 'type'], higherIsBetter: true },
+  { id: 'D1', keys: ['total_cost'], label: 'Coût total', unit: '€', definition: 'Prix + notaire + agence + travaux + meubles.',
+    howToRead: 'La base de toutes les rentabilités.', source: DEAL, segments: [], higherIsBetter: null },
+  { id: 'D2', keys: ['deal_gross_yield'], label: 'Rentabilité brute du projet', unit: '%',
+    definition: '12 × loyer hors charges / coût total.', howToRead: 'À comparer à la rentabilité de marché.',
+    source: DEAL, segments: [], higherIsBetter: true },
+  { id: 'D3', keys: ['net_yield'], label: 'Rentabilité nette', unit: '%',
+    definition: '(Loyers encaissés − charges du propriétaire) / coût total.',
+    howToRead: 'Après vacance, taxe foncière, assurance, gestion, entretien ; avant impôt.', source: DEAL,
+    segments: [], higherIsBetter: true },
+  { id: 'D4', keys: ['net_net_yield'], label: 'Rentabilité nette-nette', unit: '%',
+    definition: 'Rentabilité nette après impôt sur les loyers, par régime fiscal.',
+    howToRead: 'Dépend de votre tranche marginale d’imposition.', source: DEAL, segments: [], higherIsBetter: true },
+  { id: 'D5', keys: ['payment_monthly'], label: 'Mensualité', unit: '€/mois',
+    definition: 'Remboursement du prêt + assurance emprunteur.', howToRead: '', source: DEAL, segments: [],
+    higherIsBetter: false },
+  { id: 'D6', keys: ['cash_flow', 'cash_flow_monthly'], label: 'Cash-flow mensuel', unit: '€/mois',
+    definition: '(Loyers encaissés − charges − mensualités) / 12.',
+    howToRead: 'Négatif : vous complétez chaque mois. Bien type : financement par défaut (10 % d’apport, 20 ans).',
+    source: DEAL, segments: ['type', 'size', 'area'], higherIsBetter: true },
+  { id: 'D7', keys: ['quick_test_monthly'], label: 'Test des 70 %', unit: '€/mois',
+    definition: '70 % du loyer − mensualité.', howToRead: 'Positif : le loyer couvre le prêt avec marge.',
+    source: DEAL, segments: [], higherIsBetter: true },
+  { id: 'D8', keys: ['cash_on_cash'], label: 'Rendement de l’apport', unit: '%',
+    definition: 'Cash-flow annuel / apport.', howToRead: '', source: DEAL, segments: [], higherIsBetter: true },
+  { id: 'D9', keys: ['hcsf_debt_ratio'], label: 'Taux d’endettement (HCSF)', unit: '%',
+    definition: '(Crédits + nouvelle mensualité) / (revenus + 70 % du loyer).',
+    howToRead: 'Les banques refusent au-delà de 35 % (sauf dérogations).', source: DEAL, segments: [],
+    higherIsBetter: false },
+  { id: 'D10', keys: ['dscr'], label: 'Couverture de la dette (DSCR)', unit: '×',
+    definition: 'Revenu net d’exploitation / service de la dette.', howToRead: 'Au-dessus de 1 : le bien paie son prêt.',
+    source: DEAL, segments: [], higherIsBetter: true },
+  { id: 'D11', keys: ['cap_rate'], label: 'Taux de capitalisation', unit: '%',
+    definition: 'Revenu net d’exploitation / prix (sans les frais).', howToRead: 'Compare des biens hors financement.',
+    source: DEAL, segments: ['type', 'size', 'area'], higherIsBetter: true },
+  { id: 'D12', keys: ['price_vs_market'], label: 'Prix vs marché', unit: '%',
+    definition: 'Prix au m² du bien / médiane de sa cellule − 1.', howToRead: 'Sous P25 : bon marché ; au-dessus de P75 : cher.',
+    source: `${DEAL} ; ${DVF}`, segments: [], higherIsBetter: false },
+  { id: 'D13', keys: ['tax_by_regime'], label: 'Impôt par régime', unit: '€/an',
+    definition: 'Micro-foncier, réel, LMNP micro-BIC et réel avec amortissements.', howToRead: '',
+    source: DEAL, segments: [], higherIsBetter: false },
+  { id: 'D14', keys: ['irr'], label: 'TRI avec revente', unit: '%',
+    definition: 'Taux de rendement interne sur 10 à 20 ans, revente nette d’impôt sur la plus-value.',
+    howToRead: 'Le rendement global de l’apport, revente comprise.', source: DEAL, segments: [], higherIsBetter: true },
+  { id: 'D15', keys: ['leverage'], label: 'Effet de levier', unit: '%',
+    definition: 'Rentabilité des fonds propres comparée à celle du bien.', howToRead: '', source: DEAL, segments: [],
+    higherIsBetter: true },
+  { id: 'D16', keys: ['brrrr'], label: 'BRRRR', unit: '€',
+    definition: 'Prix maximum = 70 % de la valeur après travaux − travaux ; refinancement à 75 %.', howToRead: '',
+    source: DEAL, segments: [], higherIsBetter: null },
+  { id: 'D17', keys: ['break_even'], label: 'Taux d’occupation d’équilibre', unit: '%',
+    definition: '(Charges + mensualités) / loyers potentiels.', howToRead: 'Sous 100 % : de la marge.', source: DEAL,
+    segments: [], higherIsBetter: false },
+  { id: 'D18', keys: ['charges_provision'], label: 'Provision de charges', unit: '€/m²/mois',
+    definition: 'Charges récupérables retirées du loyer d’annonce : 1,5 €/m² (appartement), 0,5 (maison).',
+    howToRead: 'Estimation modifiable dans le simulateur.', source: 'USH ; observatoires de charges', segments: ['type'],
+    higherIsBetter: null },
+  { id: 'X1', keys: ['new_premium'], label: 'Prime du neuf', unit: '%',
+    definition: 'Prix médian au m² du neuf (VEFA) / ancien − 1, même type et période.', howToRead: '',
+    source: DVF, segments: ['type', 'period', 'area'], higherIsBetter: null },
+  { id: 'X2', keys: ['oll', 'rent_m2_median'], label: 'Loyers en place (OLL)', unit: '€/m²/mois',
+    definition: 'Loyer médian des locataires en place, hors charges, par agglomération, 2014–2025.',
+    howToRead: 'Comparable d’une année sur l’autre : la vraie tendance des loyers.',
+    source: 'Observatoires locaux des loyers', segments: ['type', 'area'], higherIsBetter: null },
+  { id: 'X3', keys: ['share_houses', 'tenant_share', 'apartments_before_1946_share'], label: 'Parc de logements',
+    unit: '%', definition: 'Composition du parc : maisons/appartements, pièces, époque de construction, locataires.',
+    howToRead: '', source: 'INSEE, recensement 2022 (logement)', segments: ['area'], higherIsBetter: null },
+  { id: 'X4', keys: ['median_land_m2', 'share_with_outbuilding'], label: 'Terrain et dépendances', unit: 'm² / %',
+    definition: 'Terrain médian des maisons ; part des ventes avec cave, garage ou parking.',
+    howToRead: 'Explique une partie de l’écart de prix au m².', source: DVF, segments: MARKET, higherIsBetter: null },
+  { id: 'X5', keys: ['reliability'], label: 'Fiabilité', unit: '',
+    definition: 'Faible sous 30 ventes, non publié sous 10.', howToRead: '', source: DVF, segments: MARKET,
+    higherIsBetter: null },
+];
+
+const BY_KEY = new Map(KPI_CATALOGUE.flatMap((entry) => entry.keys.map((key) => [key, entry] as const)));
+
+/** Entry for a field name or map metric base (e.g. 'gross_yield', 'price'). */
+export const catalogueEntry = (key: string): KpiEntry | undefined => BY_KEY.get(key);

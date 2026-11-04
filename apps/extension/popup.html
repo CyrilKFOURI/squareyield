@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: light dark; --accent: #1f5fd1; --on-accent: #ffffff; --muted: #60646c; }
+      @media (prefers-color-scheme: dark) { :root { --accent: #6ea1ff; --on-accent: #0b1220; --muted: #b0b4ba; } }
+      body { font: 14px/1.4 system-ui, sans-serif; width: 300px; margin: 0; padding: 16px; }
+      h1 { font-size: 16px; margin: 0 0 8px; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0; }
+      dt { color: var(--muted); }
+      dd { margin: 0; font-weight: 600; }
+      .missing { color: var(--muted); font-weight: 400; font-style: italic; }
+      button { width: 100%; padding: 10px; border: 0; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      p { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+    </style>
+  </head>
+  <body>
+    <h1>Analyser ce bien</h1>
+    <div id="status">Lecture de l'annonce…</div>
+    <dl id="fields" hidden></dl>
+    <button id="open" disabled>Ouvrir l'analyse</button>
+    <p>Seuls le prix, la surface, les pièces, le type et la ville sont lus, sur cette page uniquement. Rien n'est envoyé ni enregistré par l'extension : vous vérifiez les champs dans l'app.</p>
+    <script src="parser.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
