@@ -1,3 +1,5 @@
+<p><img src="docs/brand/squareyield-mark.svg" alt="" width="64" height="64"></p>
+
 # SquareYield
 
 **SquareYield est une app d'analyse de l'investissement locatif en France** : prix, loyers et rendement au m²,

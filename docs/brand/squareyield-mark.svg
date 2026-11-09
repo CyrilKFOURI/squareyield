@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke-width="2.6" role="img" aria-label="SquareYield"><style>.ink{stroke:#24201b}.dot{fill:#24201b}.pos{stroke:#2f7a4f}@media (prefers-color-scheme: dark){.ink{stroke:#ede8e1}.dot{fill:#ede8e1}.pos{stroke:#72c08f}}</style>
+  <path class="ink" d="M17 6.5H5.5v20h20V15"/>
+  <rect class="dot" x="10.7" y="15.7" width="2.6" height="2.6"/>
+  <path class="pos" d="M15.5 16.5 27 5M19.5 5H27v7.5"/>
+</svg>
