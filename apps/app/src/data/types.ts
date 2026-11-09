@@ -199,7 +199,10 @@ export type Place = {
   latest?: Partial<Record<DwellingType, Partial<Record<RoomsBucket, LatestCell>>>>;
   typical_deal?: Partial<Record<DwellingType, Partial<Record<RoomsBucket, TypicalDeal>>>>;
   /** [code, name, distance km], nearest first. */
-  neighbours?: [string, string, number][];
+  /** Nearest places: [code, name, km, level, lon, lat, {type: [sales, €/m², 1-year change, gross yield]}]. */
+  neighbours?: [string, string, number, GeoLevel, number, number, Partial<Record<DwellingType, [number, number, number | null, number | null]>>][];
+  /** Centroid [lon, lat] of a commune / arrondissement. */
+  point?: [number, number];
   local_tax?: { tax_year: number; tfpb_rate: number };
   energy?: Partial<Record<PropertyType, Energy>>;
   rent_control?: boolean;

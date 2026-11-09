@@ -8,7 +8,7 @@ export default function MapRoute() {
   return (
     <>
       <Head>
-        <title>Carte · Cyfouri</title>
+        <title>Carte · SquareYield</title>
         <meta name="robots" content="noindex" />
       </Head>
       <MapScreen {...screen} dom={{ style: { flex: 1 } }} />

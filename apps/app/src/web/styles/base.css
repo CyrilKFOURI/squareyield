@@ -21,27 +21,60 @@
 .cy-sidebar { display: flex; flex-direction: column; border-right: 1px solid var(--line); background: var(--surface); min-height: 0; }
 .cy-brand { display: flex; align-items: center; gap: 10px; height: var(--topbar); padding: 0 14px; border-bottom: 1px solid var(--line); }
 .cy-brand-mark { width: 28px; height: 22px; background: var(--ink-1); -webkit-mask: var(--logo) center / contain no-repeat; mask: var(--logo) center / contain no-repeat; }
-.cy-brand-name { font: 400 15px/1 var(--font-brand); letter-spacing: 0.14em; }
-.cy-nav { display: flex; flex-direction: column; padding: 8px 0; overflow-y: auto; }
+.cy-brand-sign { flex: none; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.cy-brand-by { font: 500 9px/1 var(--font-brand); letter-spacing: 0.14em; color: var(--ink-2); }
+.cy-brand-name { font: 600 16px/1.1 var(--font-ui); letter-spacing: 0.01em; white-space: nowrap; }
+.cy-sy-mark { flex: none; color: var(--ink-1); }
+.cy-brand .cy-brand-sign { margin-right: 4px; padding-right: 12px; border-right: 1px solid var(--line); }
+.cy-nav { display: flex; flex-direction: column; flex: none; padding: 8px 0; overflow-y: auto; }
 .cy-nav-group { padding: 12px 14px 4px; font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-.cy-nav a { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 14px; color: var(--ink-2); border-left: 2px solid transparent; }
+.cy-nav a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 14px; color: var(--ink-2); border-left: 2px solid transparent; }
 .cy-nav a:hover { background: var(--surface-hover); color: var(--ink-1); }
 .cy-nav a[aria-current='page'] { color: var(--ink-1); border-left-color: var(--ink-1); background: var(--surface-2); font-weight: 500; }
-.cy-sidebar-foot { margin-top: auto; border-top: 1px solid var(--line); padding: 8px 14px; display: flex; gap: 6px; align-items: center; color: var(--ink-3); font-size: var(--fs-small); }
+.cy-nav-icon { flex: none; color: var(--ink-3); }
+.cy-nav a[aria-current='page'] .cy-nav-icon { color: var(--ink-1); }
+.cy-nav-text { display: grid; line-height: 1.25; min-width: 0; }
+.cy-nav-text small { color: var(--ink-3); font-size: var(--fs-micro); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.cy-sidebar-foot { margin-top: auto; border-top: 1px solid var(--line); padding: 8px 14px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--ink-3); font-size: var(--fs-small); }
+.cy-foot-link { flex: 1 1 100%; padding: 2px 0; color: var(--ink-2); }
+.cy-foot-link:hover, .cy-foot-link[aria-current='page'] { color: var(--ink-1); }
+.cy-collapse { margin-left: auto; padding: 0 9px; }
+
+/* folded sidebar: an icon strip, the content takes the width */
+.cy-app.collapsed { grid-template-columns: 52px 1fr; }
+.cy-app.collapsed .cy-brand-name, .cy-app.collapsed .cy-brand-sign, .cy-app.collapsed .cy-nav-text, .cy-app.collapsed .cy-foot-link,
+.cy-app.collapsed .cy-sidebar-foot > button:not(.cy-collapse) { display: none; }
+.cy-app.collapsed .cy-brand { padding: 0 12px; }
+.cy-app.collapsed .cy-nav a { justify-content: center; padding: 6px 0; }
+.cy-app.collapsed .cy-sidebar-foot { padding: 8px 6px; justify-content: center; }
+.cy-app.collapsed .cy-collapse { margin: 0; }
 
 /* main column */
-.cy-main { display: grid; grid-template-rows: var(--topbar) auto 1fr; min-width: 0; min-height: 0; }
-.cy-topbar { display: flex; align-items: center; gap: 16px; padding: 0 16px; border-bottom: 1px solid var(--line); background: var(--surface); min-width: 0; }
+.cy-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.cy-topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; min-height: var(--topbar); padding: 6px 16px; flex: none; border-bottom: 1px solid var(--line); background: var(--surface); min-width: 0; }
 .cy-title { font-size: var(--fs-title); font-weight: 600; white-space: nowrap; }
 .cy-crumbs { display: flex; gap: 6px; color: var(--ink-3); font-size: var(--fs-small); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cy-crumbs a:hover { color: var(--ink-1); }
 .cy-topbar-tools { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-.cy-content { overflow: auto; min-height: 0; }
+.cy-content { flex: 1; overflow-x: hidden; overflow-y: auto; min-height: 0; min-width: 0; }
 
 /* filter bar: one flat strip of labelled controls */
 .cy-filters { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 1px solid var(--line); background: var(--surface); }
 .cy-filter { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 14px; border-right: 1px solid var(--line); min-height: 52px; }
 .cy-filter-label { font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); display: flex; gap: 4px; align-items: center; }
+
+/* filters in the sidebar (020): one column of labelled controls, scrolls on its own */
+/* basis 0: a long filter column scrolls instead of squeezing the brand and the foot */
+.cy-side-filters { flex: 1 1 0; min-height: 0; overflow-y: auto; border-top: 1px solid var(--line); padding: 12px 14px 16px; }
+.cy-side-filters-title { margin: 0 0 10px; font-size: var(--fs-micro); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.cy-side-filters .cy-filters { display: grid; gap: 14px; border: 0; background: none; }
+.cy-side-filters .cy-filter { padding: 0; border: 0; min-height: 0; gap: 6px; }
+.cy-side-filters .cy-filter > * { max-width: 100%; }
+.cy-side-filters .cy-seg { display: flex; flex-wrap: wrap; width: 100%; }
+.cy-side-filters .cy-seg button { flex: 1 1 auto; padding: 4px 6px; }
+.cy-side-filters .cy-select, .cy-side-filters .cy-input { width: 100%; height: 28px; }
+.cy-side-filters-open { display: flex; justify-content: center; align-items: center; height: 44px; border: 0; border-top: 1px solid var(--line); background: none; color: var(--ink-2); cursor: pointer; }
+.cy-side-filters-open:hover { background: var(--surface-hover); color: var(--ink-1); }
 
 /* controls */
 .cy-seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
@@ -55,8 +88,10 @@
 .cy-button { height: 28px; padding: 0 12px; border: 1px solid var(--ink-1); border-radius: var(--radius); background: var(--ink-1); color: var(--bg); font-size: var(--fs-small); font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .cy-button.ghost { background: transparent; color: var(--ink-1); border-color: var(--line-strong); }
 .cy-button:hover { opacity: 0.88; }
-.cy-app a.cy-button { color: var(--bg); }
-.cy-app a.cy-button.ghost { color: var(--ink-1); }
+/* `.cy-app button { color: inherit }` outranks `.cy-button`: without these, a primary <button> drew ink on ink (020) */
+.cy-app .cy-button { color: var(--bg); }
+.cy-app .cy-button.ghost { color: var(--ink-1); }
+.cy-button:disabled, .cy-button:disabled:hover { opacity: 0.45; cursor: not-allowed; }
 
 /* docked panels on a grid; lines come from the panels' own borders */
 .cy-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-content: start; }
@@ -99,7 +134,7 @@
 /* ⓘ tooltip */
 .cy-info { position: relative; display: inline-flex; width: 13px; height: 13px; border: 1px solid var(--line-strong); border-radius: 50%; font: 600 9px/11px var(--font-ui); justify-content: center; color: var(--ink-3); cursor: help; text-transform: none; letter-spacing: 0; }
 .cy-info:hover, .cy-info:focus { color: var(--ink-1); border-color: var(--ink-2); }
-.cy-info-pop { display: none; position: absolute; z-index: 50; top: 18px; left: -8px; width: 300px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); color: var(--ink-1); font: 400 var(--fs-small)/1.45 var(--font-ui); text-align: left; white-space: normal; }
+.cy-info-pop { display: none; position: fixed; z-index: 1000; top: 0; left: 0; width: 300px; max-height: calc(100vh - 16px); overflow: auto; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); color: var(--ink-1); font: 400 var(--fs-small)/1.45 var(--font-ui); text-align: left; white-space: normal; }
 .cy-info:hover .cy-info-pop, .cy-info:focus .cy-info-pop { display: block; }
 .cy-info-pop b { display: block; margin-bottom: 4px; }
 .cy-info-pop p { margin: 4px 0 0; color: var(--ink-2); }
@@ -115,7 +150,9 @@
   .cy-sidebar { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
   .cy-brand { border-bottom: 0; }
   .cy-nav { flex-direction: row; padding: 0; }
-  .cy-nav-group, .cy-sidebar-foot { display: none; }
+  .cy-nav-group, .cy-sidebar-foot, .cy-nav-text small { display: none; }
+  .cy-app.collapsed { grid-template-columns: 1fr; }
+  .cy-app.collapsed .cy-nav-text { display: grid; }
   .cy-nav a { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; height: var(--topbar); }
   .cy-nav a[aria-current='page'] { border-bottom-color: var(--ink-1); }
   .cy-grid > .cy-panel { grid-column: 1 / -1 !important; }
@@ -123,7 +160,7 @@
 }
 
 /* place search: input with a flat result list docked under it */
-.cy-search { position: relative; min-width: 220px; }
+.cy-search { position: relative; flex: 1 1 200px; min-width: 0; max-width: 340px; }
 .cy-search-list { position: absolute; z-index: 30; top: 100%; left: 0; right: 0; margin: 0; padding: 0; list-style: none;
   background: var(--surface); border: 1px solid var(--line-strong); border-top: 0; max-height: 280px; overflow: auto; }
 .cy-search-list button { display: flex; justify-content: space-between; gap: 8px; width: 100%; padding: 5px 8px; border: 0;
@@ -151,9 +188,7 @@
 .cy-score { padding: 4px 0 8px; }
 .cy-score b { font-size: 28px; font-weight: 600; }
 
-/* number input with its unit; plain lists */
-.cy-unit { display: inline-flex; align-items: center; gap: 4px; }
-.cy-unit .cy-input { width: 90px; text-align: right; }
+/* plain lists (number inputs with a unit: see forms (020)) */
 .cy-list { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 
 /* compare: grouped rows, colour key in headers, best value underlined */
@@ -165,11 +200,9 @@
 .cy-sim-form { padding: 10px 14px; display: grid; gap: 10px; }
 .cy-sim-form fieldset { border: 0; border-top: 1px solid var(--line); margin: 0; padding: 8px 0 0; display: grid; gap: 6px; }
 .cy-sim-form legend { padding: 0 6px 0 0; font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-.cy-sim-form label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: var(--fs-small); color: var(--ink-2); }
 .cy-anchors button { padding: 7px 14px; border: 0; border-right: 1px solid var(--line); background: none; color: var(--ink-2); font: inherit; font-size: var(--fs-small); cursor: pointer; }
 .cy-anchors button.active { color: var(--ink-1); box-shadow: inset 0 -2px 0 var(--ink-1); }
 .cy-anchors button:hover { background: var(--surface-2); }
-.cy-sim-form .cy-unit .cy-input { width: 104px; }
 
 /* home: four entry paths in one docked strip */
 .cy-paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); border: 1px solid var(--line); }
@@ -177,3 +210,290 @@
 .cy-paths a:hover { background: var(--surface-2); }
 .cy-paths b { color: var(--ink-1); font-weight: 600; }
 .cy-paths span { color: var(--ink-2); font-size: var(--fs-small); }
+
+/* numbered steps of a path: ① France · ② Département · ③ Commune */
+.cy-steps { display: flex; flex-wrap: wrap; align-items: stretch; min-height: 48px; padding: 0 4px; border-bottom: 1px solid var(--line); background: var(--surface); flex: none; }
+.cy-step { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border: 0; background: none; min-width: 0; color: var(--ink-3); font-size: var(--fs-small); text-align: left; }
+.cy-step b { display: inline-flex; width: 18px; height: 18px; border-radius: var(--radius); border: 1px solid var(--line-strong); align-items: center; justify-content: center; font-size: var(--fs-micro); font-weight: 600; font-variant-numeric: tabular-nums; flex: none; }
+.cy-step span { display: grid; line-height: 1.3; min-width: 0; }
+.cy-step small { font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.cy-step em { font-style: normal; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.cy-app a.cy-step:hover { background: var(--surface-hover); color: var(--ink-1); }
+.cy-app a.cy-step:hover em { color: var(--ink-1); }
+.cy-step.done b { background: var(--surface-2); color: var(--ink-1); }
+.cy-step.current { color: var(--ink-1); box-shadow: inset 0 -2px 0 var(--ink-1); }
+.cy-step.current b { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
+.cy-step.current em { color: var(--ink-1); font-weight: 600; }
+.cy-step-sep { display: flex; align-items: center; flex: none; padding: 0 2px; color: var(--line-strong); }
+.cy-step-hint { margin-left: auto; align-self: center; padding: 0 12px; color: var(--ink-3); font-size: var(--fs-small); }
+@media (max-width: 900px) { .cy-step { flex: 1 1 26%; padding: 6px 8px; gap: 8px; } .cy-step-hint { display: none; } }
+
+/* level picker (020): Marché ② Département and ③ Commune open a docked dropdown (search + scrollable list) */
+.cy-level { cursor: pointer; max-width: 340px; }
+.cy-app button.cy-level:hover:not(:disabled), .cy-level.open { background: var(--surface-hover); }
+.cy-app button.cy-level:hover:not(:disabled) em { color: var(--ink-1); }
+.cy-level-caret { flex: none; margin-left: 2px; color: var(--ink-3); transition: transform 120ms ease-out; }
+.cy-level.open .cy-level-caret { transform: rotate(180deg); color: var(--ink-1); }
+.cy-level.disabled { cursor: not-allowed; }
+.cy-level.disabled b { border-style: dashed; }
+.cy-level.disabled em { color: var(--ink-3); font-style: italic; }
+.cy-level.disabled .cy-level-caret { opacity: 0.4; }
+.cy-level-panel { position: fixed; z-index: 60; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 0 0 var(--radius) var(--radius); font-size: var(--fs-small); }
+.cy-level-search { padding: 8px; border-bottom: 1px solid var(--line); }
+.cy-level-search .cy-input { height: 28px; font-size: var(--fs-base); }
+.cy-level-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 96px; gap: 10px; align-items: baseline; padding: 5px 10px 5px 8px; border-left: 2px solid transparent; }
+.cy-level-row.count { grid-template-columns: 42px minmax(0, 1fr) 88px 48px; }
+.cy-level-head { padding-top: 4px; padding-bottom: 4px; background: var(--surface-2); border-bottom: 1px solid var(--line); color: var(--ink-3); font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.cy-level-head span { overflow: hidden; text-overflow: ellipsis; }
+.cy-level-head span:nth-child(n + 3) { text-align: right; }
+.cy-level-list { position: relative; margin: 0; padding: 0; list-style: none; overflow-y: auto; overscroll-behavior: contain; }
+.cy-level-list li { cursor: pointer; color: var(--ink-2); }
+.cy-level-list li + li { border-top: 1px solid var(--line); }
+.cy-level-list li.active { background: var(--surface-2); color: var(--ink-1); }
+.cy-level-list li.current { border-left-color: var(--accent); }
+.cy-level-list li.current .cy-level-name { color: var(--accent); font-weight: 600; }
+.cy-level-code { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cy-level-name { color: var(--ink-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cy-level-here { color: var(--ink-3); font-weight: 400; }
+.cy-level-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cy-level-status { margin: 0; padding: 8px 10px; color: var(--ink-3); }
+@media (prefers-reduced-motion: reduce) { .cy-level-caret { transition: none; } }
+/* end level picker (020) */
+
+/* bar / heat map tool strip inside a panel head */
+.cy-chart-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cy-search-group { padding: 4px 8px; font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); background: var(--surface-2); border-bottom: 1px solid var(--line); }
+
+/* 019 sales map: map + docked building panel, local API off panel */
+.cy-sales { display: grid; grid-template-columns: minmax(0, 1fr); }
+.cy-sales.open { grid-template-columns: minmax(0, 1fr) minmax(340px, 540px); }
+.cy-sales-map { position: relative; height: 560px; min-width: 0; }
+.cy-sales-panel { border-left: 1px solid var(--line); height: 560px; overflow-y: auto; min-width: 0; background: var(--surface); }
+.cy-sales-head { display: flex; gap: 8px; align-items: flex-start; padding: 10px 14px; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; background: var(--surface); }
+.cy-sales-list td, .cy-sales-list th { padding: 5px 7px; }
+.cy-table tbody tr.cy-dim td { color: var(--ink-3); }
+.cy-app a.cy-more { color: var(--accent); white-space: nowrap; }
+.cy-app a.cy-more:hover { text-decoration: underline; }
+.cy-range { display: inline-flex; align-items: center; gap: 4px; }
+.cy-range .cy-input { width: 72px; text-align: right; }
+.cy-map-status { position: absolute; left: 8px; bottom: 8px; z-index: 4; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 8px; font-size: var(--fs-small); color: var(--ink-2); }
+.cy-map-legend { position: absolute; left: 8px; top: 8px; z-index: 4; display: flex; flex-wrap: wrap; gap: 2px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 8px; max-width: calc(100% - 120px); }
+.cy-api-off { display: grid; gap: 8px; justify-items: start; padding: 18px 14px; color: var(--ink-2); font-size: var(--fs-small); max-width: 760px; }
+.cy-api-off b { color: var(--ink-1); font-size: var(--fs-base); }
+.cy-api-off p { margin: 0; }
+.cy-code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: var(--fs-small); background: var(--surface-2); border: 1px solid var(--line); border-radius: 2px; padding: 2px 6px; color: var(--ink-1); user-select: all; }
+.cy-sale-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.cy-sale-head h2 { margin: 0; font-size: var(--fs-value); font-weight: 600; }
+@media (max-width: 900px) {
+  .cy-sales.open { grid-template-columns: minmax(0, 1fr); }
+  .cy-sales-map { height: 420px; }
+  .cy-sales-panel { border-left: 0; border-top: 1px solid var(--line); height: auto; }
+  .cy-map-legend { max-width: calc(100% - 16px); }
+}
+
+/* forms (020): label / control / unit rows (.cy-rows) so every input starts and ends at the same x,
+   and the Analyser un bien grid (.cy-form) where labels and 28 px controls align row by row */
+.cy-rows { --row-control: 104px; --row-unit: 56px; display: grid; gap: 6px; min-width: 0; container-type: inline-size; }
+.cy-rows.narrow { max-width: 480px; }
+.cy-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--row-control) var(--row-unit); column-gap: 8px; align-items: center; min-height: 28px; font-size: var(--fs-small); color: var(--ink-2); }
+.cy-row-label { display: grid; line-height: 1.3; min-width: 0; overflow-wrap: break-word; }
+.cy-row-label small { color: var(--ink-3); font-size: var(--fs-micro); }
+.cy-row > .cy-input { width: 100%; text-align: right; }
+.cy-row > input[type='checkbox'] { justify-self: start; width: 16px; height: 16px; margin: 0; }
+.cy-row-unit { color: var(--ink-3); white-space: nowrap; }
+@container (max-width: 300px) { .cy-row { --row-control: 84px; --row-unit: 46px; column-gap: 6px; } }
+
+.cy-form { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.cy-form-field { grid-column: span 2; display: grid; grid-template-rows: auto 28px; gap: 5px; min-width: 0; }
+.cy-form-field.wide { grid-column: span 6; }
+.cy-form-field.seg { grid-column: span 4; }
+.cy-form-label { font-size: var(--fs-micro); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cy-form-control { display: flex; align-items: center; min-width: 0; }
+.cy-form-control > .cy-input, .cy-form .cy-search { flex: 1 1 auto; width: 100%; max-width: none; }
+.cy-form .cy-input { height: 28px; }
+.cy-form .cy-seg { display: flex; width: 100%; height: 28px; }
+.cy-form .cy-seg button { flex: 1 1 auto; padding: 0 6px; }
+.cy-form .cy-chip { height: 28px; max-width: 100%; }
+.cy-form-num { display: grid; grid-template-columns: minmax(0, 1fr) 22px; gap: 6px; align-items: center; width: 100%; }
+.cy-form-num .cy-input { text-align: right; }
+.cy-form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cy-form-actions .cy-button { height: 32px; padding: 0 22px; }
+@media (max-width: 1100px) { .cy-form-field { grid-column: span 3; } }
+@media (max-width: 700px) {
+  .cy-form { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .cy-form-field.wide { grid-column: 1 / -1; }
+  .cy-form-field.seg { grid-column: span 3; }
+}
+@media (max-width: 480px) { .cy-form-field.seg { grid-column: 1 / -1; } }
+/* simulator: between the narrow layout and a wide screen, the hypotheses take 5 columns so labels keep room */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .cy-sim-grid > .cy-panel:first-child { grid-column: span 5 !important; }
+  .cy-sim-grid > .cy-panel:first-child + div { grid-column: span 7 !important; }
+}
+/* an example in a field must not read as a typed value */
+.cy-form .cy-input::placeholder, .cy-rows .cy-input::placeholder, .cy-more .cy-input::placeholder { color: var(--ink-3); opacity: 1; }
+/* end forms (020) */
+
+/* investir filters (020): the 015 screen filters as the "Plus de filtres" group of the filter column */
+.cy-more { min-width: 0; }
+.cy-filters > .cy-more { flex: 1 1 100%; padding: 8px 14px; border-top: 1px solid var(--line); }
+.cy-side-filters .cy-filters > .cy-more { padding: 12px 0 0; }
+.cy-more-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 24px; }
+.cy-app .cy-more-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 0; white-space: nowrap; border: 0; background: none; cursor: pointer; font-size: var(--fs-micro); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.cy-app .cy-more-toggle:hover { color: var(--ink-1); }
+.cy-more-caret { width: 10px; text-align: center; }
+.cy-more-toggle .cy-badge { letter-spacing: 0.04em; text-transform: none; }
+.cy-app .cy-more-reset { margin-left: auto; padding: 0; border: 0; background: none; cursor: pointer; font-size: var(--fs-small); color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
+.cy-app .cy-more-reset:hover { color: var(--ink-1); }
+.cy-more-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 16px; padding-top: 10px; }
+.cy-side-filters .cy-more-body { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.cy-more-body .cy-filter { padding: 0; border: 0; min-height: 0; gap: 6px; min-width: 0; }
+.cy-more-single { display: grid; grid-template-columns: minmax(0, 1fr) 34px; gap: 6px; align-items: center; }
+.cy-more-range { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 34px; gap: 6px; align-items: center; }
+.cy-more .cy-input { width: 100%; height: 28px; text-align: right; }
+/* ⓘ in the 240 px column: the definition opens under the label, as wide as the column, never sideways */
+.cy-side-filters .cy-filter { position: relative; }
+/* end investir filters (020) */
+
+/* ---------- phone (023, docs/features/023-phone/spec.md): ≤ 700 px, PhoneShell ---------- */
+@media (max-width: 700px) {
+  /* the document scrolls (native fling, the browser bar hides); the width never moves */
+  html, html body { height: auto; min-height: 100%; overflow: visible; overflow-x: clip; overscroll-behavior-x: none; }
+  #root { display: block; height: auto; min-height: 100%; }
+  .cy-app.cy-phone { position: static; display: block; min-height: 100dvh; overflow-x: clip; touch-action: pan-x pan-y;
+    padding-bottom: calc(var(--tabbar) + env(safe-area-inset-bottom)); -webkit-tap-highlight-color: transparent; }
+  .cy-phone .cy-content { overflow: visible; min-height: 0; }
+  .cy-phone img, .cy-phone svg, .cy-phone canvas { max-width: 100%; }
+
+  /* header: Cyfouri signature then SquareYield mark, app name over the page title, filters and theme buttons */
+  .cy-phone-head { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 10px;
+    min-height: calc(var(--phone-head) + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 6px 0 12px;
+    background: var(--surface); border-bottom: 1px solid var(--line); }
+  .cy-phone-brand { flex: none; display: flex; align-items: center; }
+  .cy-phone-brand .cy-brand-sign { padding-right: 10px; margin-right: 10px; border-right: 1px solid var(--line); }
+  .cy-phone-brand .cy-brand-mark { width: 24px; height: 18px; }
+  .cy-phone-brand .cy-brand-by { font-size: 7px; }
+  /* the page can overflow .cy-app (height: 100%), so the space for the tab bar is kept here, after the content */
+  .cy-phone-end { height: calc(24px + var(--tabbar) + env(safe-area-inset-bottom)); }
+  .cy-phone-titles { flex: 1; min-width: 0; display: grid; line-height: 1.2; }
+  .cy-phone-titles small { font-size: var(--fs-small); font-weight: 600; letter-spacing: 0.01em; color: var(--ink-2); }
+  .cy-phone-titles h1 { margin: 0; font-size: var(--fs-title); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cy-phone-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px;
+    border: 0; background: none; color: var(--ink-2); border-radius: var(--radius); cursor: pointer; }
+  .cy-phone-icon:active { background: var(--surface-hover); }
+  .cy-phone-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--surface); }
+  .cy-phone-tools > * { flex: 0 1 auto; max-width: none; }
+  .cy-phone .cy-phone-tools .cy-button { height: 36px; }
+
+  /* bottom tab bar above the home indicator */
+  .cy-tabbar { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr);
+    height: calc(var(--tabbar) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
+    background: var(--surface); border-top: 1px solid var(--line); }
+  .cy-tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--ink-3); font-size: var(--fs-micro); letter-spacing: 0.04em; }
+  .cy-tabbar a[aria-current='page'] { color: var(--ink-1); font-weight: 600; }
+  .cy-tabbar a:active { background: var(--surface-hover); }
+
+  /* filters bottom sheet */
+  .cy-sheet-backdrop { position: fixed; inset: 0; z-index: 80; background: rgb(0 0 0 / 0.35); display: flex; align-items: flex-end; }
+  .cy-sheet { width: 100%; max-height: 82dvh; display: flex; flex-direction: column; background: var(--surface);
+    border-radius: 10px 10px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .cy-sheet-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+  .cy-sheet-head h2 { margin: 0; font-size: var(--fs-title); font-weight: 600; }
+  .cy-sheet-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; border-top: 0; padding: 14px 16px 20px; }
+
+  /* steps: three equal columns, no hint */
+  .cy-phone .cy-steps { flex-wrap: nowrap; padding: 0; }
+  .cy-phone .cy-step { flex: 1 1 0; min-height: 52px; padding: 6px 6px; gap: 6px; }
+  .cy-phone .cy-step-sep, .cy-phone .cy-step-hint { display: none; }
+
+  /* level picker: a bottom sheet instead of a dropdown under the button */
+  .cy-phone .cy-level-panel { left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important; width: auto !important;
+    max-height: 75dvh !important; z-index: 90; border-radius: 10px 10px 0 0; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -8px 24px rgb(0 0 0 / 0.18); }
+  .cy-phone .cy-level-row { min-height: 44px; align-items: center; }
+  .cy-phone .cy-level-panel { box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.35); }
+
+  /* maps: smaller overlays, buttons in them still 44 px, a tapped shape's card says how to open it */
+  .cy-phone .cy-gmap-hint, .cy-phone .cy-gmap-legend, .cy-phone .cy-map-legend,
+  .cy-phone .cy-gmap-hint *, .cy-phone .cy-gmap-legend *, .cy-phone .cy-map-legend * { font-size: 10.5px; line-height: 1.35; }
+  .cy-phone .cy-gmap-hint, .cy-phone .cy-gmap-legend, .cy-phone .cy-map-legend { max-width: calc(100% - 64px) !important; padding: 2px 6px !important; }
+  .cy-phone .cy-gmap-hint .cy-button { height: 36px !important; }
+  /* map legends: one compact strip along the bottom, five classes side by side */
+  .cy-phone .cy-gmap-legend, .cy-phone .cy-map-legend { display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 1px 3px !important; left: 6px !important; right: 34px; top: auto !important; bottom: 6px !important; max-width: none !important; padding: 3px 5px !important; }
+  .cy-phone .cy-gmap-legend > :first-child, .cy-phone .cy-map-legend > :first-child { grid-column: 1 / -1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cy-phone .cy-gmap-legend > :not(:first-child), .cy-phone .cy-map-legend > :not(:first-child) { flex-direction: column; align-items: stretch !important;
+    gap: 1px !important; text-align: center; white-space: nowrap; font-size: 9px !important; }
+  .cy-phone .cy-gmap-legend > * > [aria-hidden], .cy-phone .cy-map-legend > * > [aria-hidden] { width: auto !important; height: 5px !important; border-radius: 1px !important; }
+  .cy-map-card.touch::after { content: 'Touchez à nouveau pour ouvrir'; display: block; margin-top: 6px; color: var(--ink-3); font-size: 11px; }
+  .cy-phone .maplibregl-ctrl-group button { width: 40px; height: 40px; }
+
+  /* touch: 16 px inputs (iOS does not zoom on focus), 44 px targets */
+  .cy-phone input, .cy-phone select, .cy-phone textarea, .cy-phone .cy-input, .cy-phone .cy-select { font-size: 16px; }
+  .cy-phone .cy-select, .cy-phone .cy-input, .cy-phone .cy-level-search .cy-input, .cy-phone .cy-side-filters .cy-select,
+  .cy-phone .cy-side-filters .cy-input { height: 38px; }
+  .cy-phone .cy-button { height: 38px; padding: 0 14px; font-size: var(--fs-base); }
+  .cy-phone .cy-seg button { min-height: 34px; padding: 3px 10px; font-size: var(--fs-small); }
+  .cy-phone .cy-seg { display: flex; flex-wrap: wrap; max-width: 100%; }
+  .cy-phone .cy-seg button { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; height: auto; }
+  .cy-phone .cy-check { min-height: 40px; }
+  .cy-phone .cy-info { width: 20px; height: 20px; font-size: 11px; line-height: 18px; }
+  .cy-phone .cy-info::after { content: ''; position: absolute; inset: -12px; }
+
+  /* content: one column, wide tables and legends scroll in their own box */
+  .cy-phone .cy-grid > .cy-panel { grid-column: 1 / -1 !important; border-right: 0; }
+  .cy-phone .cy-ribbon { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* tables (TableWrap): the whole table fits the width, small; pinch or double tap to zoom; first rows + "Afficher tout" */
+  .cy-ptable-box { overflow-x: auto; overflow-y: hidden; touch-action: pan-x pan-y; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .cy-ptable-box::-webkit-scrollbar { display: none; }
+  .cy-ptable-box table { width: max-content; min-width: 100%; }
+  .cy-ptable-box th { position: static; }
+  .cy-ptable-box.collapsed tbody tr:nth-child(n + 9) { display: none; }
+  .cy-phone .cy-table td, .cy-phone .cy-table th { padding: 5px 6px; }
+  /* headers wrap on two or three lines: a wide table fits the width at a readable size */
+  .cy-ptable-box th { white-space: normal; max-width: 72px; line-height: 1.2; vertical-align: bottom; letter-spacing: 0.02em; }
+  .cy-ptable-box th .cy-info { display: none; }
+  .cy-ptable-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 0 8px 0 0;
+    font-size: var(--fs-micro); border-top: 1px solid var(--line); }
+  .cy-app .cy-ptable-more { min-height: 40px; padding: 0 12px; border: 0; background: none; color: var(--ink-1); font-size: var(--fs-small); font-weight: 500; cursor: pointer; }
+
+  /* everything a notch smaller (user, 2026-10-29): KPIs three to a row, smaller maps */
+  .cy-phone .cy-ribbon { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cy-phone .cy-kpi { padding: 7px 8px; }
+  .cy-phone .cy-kpi-label { font-size: 9px; letter-spacing: 0.05em; min-height: 0; }
+  .cy-phone .cy-kpi-label .cy-info { display: none; }
+  .cy-phone .cy-kpi-value { font-size: 15px; margin-top: 1px; }
+  .cy-phone .cy-kpi-detail { font-size: 10px; }
+  .cy-phone .cy-map-box { height: 260px !important; }
+  .cy-phone .cy-sales-map { height: 300px; }
+  .cy-phone .cy-panel-body { padding: 8px 10px; }
+  .cy-phone .cy-panel-head { min-height: 34px; padding: 6px 10px; }
+  .cy-phone .cy-note { font-size: 11px; }
+  .cy-no-phone { display: none !important; }
+
+  /* phone bar list (BarRanking): ten rows high, scrolls with one finger, clear end */
+  .cy-rank { font-size: var(--fs-small); }
+  .cy-rank-list { list-style: none; margin: 0; padding: 0; }
+  .cy-rank-list.scroll { max-height: calc(var(--rows) * 32px); overflow-y: auto; overscroll-behavior: contain;
+    border-block: 1px solid var(--line); scrollbar-width: thin;
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); }
+  .cy-app .cy-rank-row { display: grid; grid-template-columns: 22px minmax(0, 1.1fr) minmax(0, 1fr) auto; align-items: center; gap: 8px;
+    width: 100%; height: 32px; padding: 0 2px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left; cursor: pointer; }
+  .cy-rank-row.ref { color: var(--ink-2); font-style: italic; border-bottom: 1px dashed var(--line-strong); }
+  .cy-rank-n { color: var(--ink-3); font-size: var(--fs-micro); text-align: right; }
+  .cy-rank-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cy-rank-bar { height: 8px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .cy-rank-bar i { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+  .cy-rank-bar i.neg { background: var(--neg); }
+  .cy-rank-row.ref .cy-rank-bar i { background: var(--ink-3); }
+  .cy-rank-v { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cy-rank-foot { padding: 6px 2px 0; color: var(--ink-3); font-size: var(--fs-micro); text-align: center; }
+  .cy-phone .cy-panel-head { flex-wrap: wrap; padding: 8px 12px; row-gap: 6px; }
+  .cy-phone .cy-panel-tools { margin-left: 0; flex-wrap: wrap; }
+  .cy-phone .cy-filters { flex-direction: column; }
+  /* sale lists: the essential columns fit the width, a tap on the row opens the sale */
+  .cy-phone .cy-more-text { display: none; }
+  .cy-phone .cy-sales-list .cy-more { display: inline-flex; min-width: 32px; min-height: 32px; align-items: center; justify-content: center; }
+  /* anchors and scrolled-to panels land under the sticky header, not behind it */
+  .cy-phone [id], .cy-phone .cy-sales-panel { scroll-margin-top: calc(var(--phone-head) + env(safe-area-inset-top) + 8px); }
+}

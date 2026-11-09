@@ -4,12 +4,15 @@
 data/serve/
   series/<level>_<type>.json      half-year and year medians of France, régions, départements
                                   (type apartment, house or all; split to keep each file < 1 MB)
+  series/communes/<dep>.json      yearly medians of each commune / arrondissement of a département
+                                  (existing homes, all sizes, complete years, ≥ min_sales sales)
   explorer/regions.json           one row per région × type × size (latest complete year)
   explorer/departements.json      one row per département × type × size
   explorer/communes/<dep>.json    one row per commune / arrondissement × type × size
   points/communes.json            commune centroids with their key figures (map, points mode)
   points/sections/<dep>.json      cadastral-section medians (≥ 10 sales, two complete years pooled)
   points/breaks.json              quintile breaks of the section layer
+  levels/                         one ready-to-draw file per level page (levels.py)
 Individual sales are never written: a section point aggregates at least MIN_PUBLISHED_SALES sales.
 """
 import json
@@ -18,7 +21,7 @@ from pathlib import Path
 
 import duckdb
 
-from . import mapdata
+from . import levels, mapdata
 from .marts import _market_sales
 from .publish import SEARCHABLE_LEVELS, TYPES, _columns, _has_table, _latest_complete_year, _round, _typical
 
@@ -38,6 +41,7 @@ EXPLORER_FIELDS = (
 )
 SERIES_FIELDS = ("code", "condition", "size", "period_type", "period", "n", "median", "p25", "p75")
 SERIES_LEVELS = ("france", "region", "departement")
+COMMUNE_SERIES_FIELDS = ("code", "type", "period", "n", "median")
 COMMUNE_POINT_FIELDS = ("code", "level", "name", "dep", "lon", "lat", "type", "n", "median_price_m2",
                         "yoy_change", "gross_yield", "cash_flow_monthly")
 CITIES_WITH_ARRONDISSEMENTS = {"75056", "13055", "69123"}
@@ -78,6 +82,23 @@ def _series(con: duckdb.DuckDBPyConnection, level: str, property_type: str, min_
     ).fetchall()
     return {"level": level, "type": property_type, "fields": SERIES_FIELDS,
             "rows": [[_round(v) for v in r] for r in rows]}
+
+
+def _commune_series(con: duckdb.DuckDBPyConnection, min_sales: int) -> dict[str, list]:
+    """Yearly median €/m² per commune / arrondissement and type, grouped by département. Edge years of the
+    DVF window hold one half only: they are left out, a yearly change needs two complete years."""
+    rows = con.execute(
+        f"""SELECT m.departement, p.geo_code, p.property_type, p.period, p.n_sales, p.median_price_m2
+            FROM kpi_price p JOIN commune_map m ON m.code = p.geo_code
+            WHERE p.geo_level IN {SEARCHABLE_LEVELS} AND p.period_type = 'year' AND NOT coalesce(p.is_partial, false)
+              AND p.condition = 'existing' AND p.property_type IN {TYPES} AND p.rooms_bucket = 'all'
+              AND p.n_sales >= {min_sales}
+            ORDER BY ALL"""
+    ).fetchall()
+    by_dep: dict[str, list] = {}
+    for dep, code, ptype, period, n, median in rows:
+        by_dep.setdefault(dep, []).append([code, ptype, period, n, round(median)])  # whole euros
+    return by_dep
 
 
 def _explorer_rows(con: duckdb.DuckDBPyConnection, min_sales: int) -> list[dict]:
@@ -240,6 +261,13 @@ def write(con: duckdb.DuckDBPyConnection, serve_dir: Path, min_sales: int) -> di
     sizes = [_dump(serve_dir / "explorer" / "communes" / f"{dep}.json",
                    _explorer_doc([r for r in local if r["parent"] == dep], period)) for dep in departements]
     stats["explorer_max_kb"] = round(max(sizes, default=0) / 1024)
+    commune_series = _commune_series(con, min_sales)
+    sizes = [_dump(serve_dir / "series" / "communes" / f"{dep}.json",
+                   {"departement": dep, "fields": COMMUNE_SERIES_FIELDS, "rows": commune_series.get(dep, [])})
+             for dep in departements]
+    stats["commune_series_max_kb"] = round(max(sizes, default=0) / 1024)
+    stats |= levels.write(con, serve_dir, min_sales, explorer, period, departements, _departement_names(),
+                          REGION_NAMES, _dump)
     stats["points_kb"] = round(_dump(serve_dir / "points" / "communes.json", _commune_points(con, min_sales)) / 1024)
     section_period, sections = _section_points(con, min_sales)
     section_sizes = [_dump(serve_dir / "points" / "sections" / f"{dep}.json",

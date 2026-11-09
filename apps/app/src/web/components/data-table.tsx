@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 
 import { InfoTip } from './panel';
+import { TableWrap } from './table-wrap';
 
 export type Column<R> = {
   key: string;
@@ -35,7 +36,7 @@ export const DataTable = <R,>({
   maxHeight,
   empty,
 }: DataTableProps<R>) => (
-  <div className="cy-table-wrap" style={{ maxHeight }}>
+  <TableWrap maxHeight={maxHeight}>
     <table className="cy-table">
       <thead>
         <tr>
@@ -77,5 +78,5 @@ export const DataTable = <R,>({
       </tbody>
     </table>
     {rows.length === 0 && empty}
-  </div>
+  </TableWrap>
 );

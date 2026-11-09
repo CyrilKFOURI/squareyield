@@ -8,7 +8,7 @@ export default function MethodRoute() {
   return (
     <>
       <Head>
-        <title>Méthode et glossaire · Cyfouri</title>
+        <title>Méthode et glossaire · SquareYield</title>
       </Head>
       <MethodScreen {...screen} dom={{ style: { flex: 1 } }} />
     </>

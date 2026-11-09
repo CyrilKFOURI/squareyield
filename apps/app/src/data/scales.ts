@@ -10,7 +10,7 @@ export const PALETTES = {
   rdylgn: ['#1a9641', '#a6d96a', '#ffffbf', '#fdae61', '#d7191c'],
   viridis: ['#fde725', '#5ec962', '#21918c', '#3b528b', '#440154'],
   /** Metrics with no good or bad end (e.g. price trend): light to dark. */
-  sequential: ['#f1eef6', '#bdc9e1', '#74a9cf', '#2b8cbe', '#045a8d'],
+  sequential: ['#efe9df', '#fee08b', '#fdae61', '#f46d43', '#d73027'], // warm grey → yellow → orange → red (user choice)
 } as const;
 
 /** Class 0–4 of a value: 0 = lowest fifth. */

@@ -1,5 +1,5 @@
 // Docked panels, the KPI ribbon, the ⓘ and the empty / error states (docs/UI_UX.md).
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, SyntheticEvent } from 'react';
 
 import { catalogueEntry } from '../../data/catalogue';
 
@@ -13,11 +13,13 @@ type PanelProps = {
   flush?: boolean;
   style?: CSSProperties;
   id?: string;
+  /** Not shown on a phone (023): a view that does not work on a small screen (the year heatmaps). */
+  hideOnPhone?: boolean;
   children: ReactNode;
 };
 
-export const Panel = ({ title, info, tools, span = 12, flush, style, id, children }: PanelProps) => (
-  <section className="cy-panel" style={{ gridColumn: `span ${span}`, ...style }} id={id}>
+export const Panel = ({ title, info, tools, span = 12, flush, style, id, hideOnPhone, children }: PanelProps) => (
+  <section className={hideOnPhone ? 'cy-panel cy-no-phone' : 'cy-panel'} style={{ gridColumn: `span ${span}`, ...style }} id={id}>
     {(title != null || tools) && (
       <header className="cy-panel-head">
         <h2 className="cy-panel-title" style={{ margin: 0 }}>
@@ -31,6 +33,25 @@ export const Panel = ({ title, info, tools, span = 12, flush, style, id, childre
   </section>
 );
 
+const GAP = 8;
+
+/** The pop is position: fixed so no scrolling panel clips it: put it under the ⓘ (above if no room), inside the window. */
+const placePop = (event: SyntheticEvent<HTMLSpanElement>) => {
+  const icon = event.currentTarget.getBoundingClientRect();
+  const pop = event.currentTarget.querySelector<HTMLElement>('.cy-info-pop');
+  if (!pop) {
+    return;
+  }
+  const width = Math.min(300, window.innerWidth - 2 * GAP);
+  pop.style.width = `${width}px`;
+  pop.style.left = `${Math.max(GAP, Math.min(icon.left - 8, window.innerWidth - width - GAP))}px`;
+  pop.style.top = `${icon.bottom + 5}px`;
+  const height = pop.offsetHeight;
+  if (icon.bottom + 5 + height > window.innerHeight - GAP && icon.top - 5 - height >= GAP) {
+    pop.style.top = `${icon.top - 5 - height}px`;
+  }
+};
+
 /** ⓘ with the catalogue entry of a field or metric: definition, how to read it, source. */
 export const InfoTip = ({ k, extra }: { k: string; extra?: string }) => {
   const entry = catalogueEntry(k);
@@ -38,7 +59,14 @@ export const InfoTip = ({ k, extra }: { k: string; extra?: string }) => {
     return null;
   }
   return (
-    <span className="cy-info" tabIndex={0} role="note" aria-label={`${entry.label} : ${entry.definition}`}>
+    <span
+      className="cy-info"
+      tabIndex={0}
+      role="note"
+      aria-label={`${entry.label} : ${entry.definition}`}
+      onMouseEnter={placePop}
+      onFocus={placePop}
+    >
       i
       <span className="cy-info-pop">
         <b>{entry.label}</b>

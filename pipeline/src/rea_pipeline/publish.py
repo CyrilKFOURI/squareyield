@@ -141,7 +141,9 @@ def _latest_and_typical(con: duckdb.DuckDBPyConnection, min_sales: int) -> dict[
 
 
 def _neighbours(con: duckdb.DuckDBPyConnection, min_sales: int) -> dict[tuple[str, str], list]:
-    """Up to 8 nearest places of the same level (≤ 30 km) that have a published flat or house cell."""
+    """Up to 8 nearest places of the same level (≤ 30 km) that have a published flat or house cell, each as
+    [code, name, km, level, lon, lat, {type: [sales, €/m², 1-year change, gross yield]}] (latest complete year,
+    existing dwellings, all sizes) so the page needs no other file."""
     if not _has_table(con, "commune_point"):
         return {}
     rows = con.execute(
@@ -155,23 +157,45 @@ def _neighbours(con: duckdb.DuckDBPyConnection, min_sales: int) -> dict[tuple[st
               AND p.property_type IN {TYPES} AND p.n_sales >= {min_sales}
         ),
         pairs AS (
-            SELECT a.geo_level, a.geo_code, b.geo_code AS other, b.nom,
+            SELECT a.geo_level, a.geo_code, b.geo_code AS other, b.nom, b.lon, b.lat,
                    2 * 6371 * asin(sqrt(pow(sin(radians(b.lat - a.lat) / 2), 2)
                        + cos(radians(a.lat)) * cos(radians(b.lat)) * pow(sin(radians(b.lon - a.lon) / 2), 2))) AS km
             FROM places a JOIN places b
               ON a.geo_level = b.geo_level AND a.geo_code <> b.geo_code
              AND abs(a.lat - b.lat) < 0.3 AND abs(a.lon - b.lon) < 0.45
         )
-        SELECT geo_level, geo_code, other, nom, round(km, 1) FROM (
+        SELECT geo_level, geo_code, other, nom, round(km, 1), lon, lat FROM (
             SELECT *, row_number() OVER (PARTITION BY geo_level, geo_code ORDER BY km) AS rank
             FROM pairs WHERE km <= {NEIGHBOUR_RADIUS_KM})
         WHERE rank <= {NEIGHBOURS} ORDER BY geo_level, geo_code, km
         """
     ).fetchall()
+    figures: dict[tuple[str, str], dict[str, list]] = {}
+    for level, code, ptype, n, price, yoy, gross_yield in con.execute(
+        f"""SELECT p.geo_level, p.geo_code, p.property_type, p.n_sales, p.median_price_m2, p.yoy_change,
+                   CASE WHEN y.status = 'ok' THEN y.gross_yield END
+            FROM kpi_price p
+            LEFT JOIN kpi_yield y ON y.geo_level = p.geo_level AND y.geo_code = p.geo_code AND y.period = p.period
+                 AND y.period_type = p.period_type AND y.property_type = p.property_type
+                 AND y.rooms_bucket = p.rooms_bucket
+            WHERE p.geo_level IN {SEARCHABLE_LEVELS} AND p.period_type = 'year' AND p.period = ?
+              AND p.condition = 'existing' AND p.rooms_bucket = 'all' AND p.property_type IN {TYPES}
+              AND p.n_sales >= {min_sales}""", [_latest_complete_year(con)]
+    ).fetchall():
+        figures.setdefault((level, code), {})[ptype] = [n, _round(price), _round(yoy), _round(gross_yield)]
     out: dict[tuple[str, str], list] = {}
-    for level, code, other, name, km in rows:
-        out.setdefault((level, code), []).append([other, name, km])
+    for level, code, other, name, km, lon, lat in rows:
+        out.setdefault((level, code), []).append(
+            [other, name, km, level, _round(lon), _round(lat), figures.get((level, other), {})])
     return out
+
+
+def _points(con: duckdb.DuckDBPyConnection) -> dict[str, list]:
+    """Centroid of every commune / arrondissement, for the neighbours mini map."""
+    if not _has_table(con, "commune_point"):
+        return {}
+    return {code: [_round(lon), _round(lat)]
+            for code, lon, lat in con.execute("SELECT code, longitude, latitude FROM commune_point").fetchall()}
 
 
 def _extras(con: duckdb.DuckDBPyConnection) -> tuple[dict[tuple[str, str], dict], dict[str, dict]]:
@@ -264,6 +288,10 @@ def _meta(con: duckdb.DuckDBPyConnection, run_id: str) -> dict:
     return meta
 
 
+# serve sub-folders written by other tools, carried over when the pipeline rebuilds data/serve
+ML_SERVE_FOLDERS = ("estimate", "sales")  # sales: `rea sales-static` (S6)
+
+
 def publish(con: duckdb.DuckDBPyConnection, min_sales: int, run_id: str,
             serve_dir: Path = paths.SERVE) -> dict:
     """Write the serve layer from the KPI tables and commune_map."""
@@ -287,6 +315,7 @@ def publish(con: duckdb.DuckDBPyConnection, min_sales: int, run_id: str,
     extras, oll_series = _extras(con)
     derived = _latest_and_typical(con, min_sales)
     neighbours = _neighbours(con, min_sales)
+    points = _points(con)
     from . import dashboard  # dashboard reuses this module's helpers
 
     curves = dashboard.rent_curves(con)
@@ -331,10 +360,11 @@ def publish(con: duckdb.DuckDBPyConnection, min_sales: int, run_id: str,
             "socio": socio.get((level, code)),
             **derived.get((level, code), {}),
             **({"neighbours": neighbours[(level, code)]} if (level, code) in neighbours else {}),
+            **({"point": points[code]} if level in SEARCHABLE_LEVELS and code in points else {}),
             **({"rent_curve": curves[(level, code)]} if (level, code) in curves else {}),
             **extras.get((level, code), {}),
         }
-        target = staging / "geo" / level / f"{code}.json"
+        target = staging / "geo" / level / code[:2] / f"{code}.json"  # < 10k files per folder (Hugging Face)
         target.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(allow_nan=False, obj=doc, ensure_ascii=False, separators=(",", ":"), default=float)  # DuckDB DECIMAL
         target.write_text(text, encoding="utf-8")
@@ -362,6 +392,9 @@ def publish(con: duckdb.DuckDBPyConnection, min_sales: int, run_id: str,
     dashboard_files = dashboard.write(con, staging, min_sales)
     have_contours = all((mapdata.CONTOURS_DIR / f"{n}.geojson.gz").exists() for n in mapdata.LAYERS.values())
     map_layer = mapdata.write_map_layer(con, staging, min_sales) if have_contours else "no contours"
+    for folder in ML_SERVE_FOLDERS:  # written by ml (`rea-ml export-web`), not by this build: keep it
+        if (serve_dir / folder).is_dir() and not (staging / folder).exists():
+            shutil.copytree(serve_dir / folder, staging / folder)
     shutil.rmtree(serve_dir, ignore_errors=True)
     staging.rename(serve_dir)
     return {"files": len(sizes), "indexed": len(index), "ranked": ranking, "map": map_layer,

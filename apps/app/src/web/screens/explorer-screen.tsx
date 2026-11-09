@@ -1,77 +1,100 @@
 'use dom';
 
-// Explorer: every région, département or commune of a département as one row of the selected comparable
-// segment (type × size), sortable on every indicator, with a price × yield scatter, the distribution of the
-// chosen indicator and a CSV export of the visible rows. Latest complete year (evolution is its own screen).
-import { useEffect, useState } from 'react';
+// Investir ① "Trouver une ville" (docs/features/017-guided-levels/spec.md): communes of the whole of France (national
+// ranking, ≥ 30 sales) or of one département (≥ 10 sales), the 015 filters on top, an investor ribbon, the yield ×
+// price-change quadrant, a top-20 bar chart and the sortable table. A row, a point or a bar opens the commune page.
+// Market exploration (départements, maps, curves) lives in the Marché pages.
+import { type CSSProperties, useEffect, useState } from 'react';
 
-import { loadTable } from '../../data/api';
-import { catalogueEntry } from '../../data/catalogue';
-import { activeCount, applyScreenFilters, parseScreenFilters } from '../../data/screen-filters';
-import { EXPLORER_METRIC, type ExplorerRow, filterRows, histogram, parseBound, PERCENT_METRICS, type Ranges, sortRows, toCsv } from '../../data/explorer';
+import { loadRanking, loadTable } from '../../data/api';
+import { type ExplorerRow, sortRows, toCsv } from '../../data/explorer';
+import { formatCount, formatEuros, formatEurosPerM2, formatPercent, formatRentPerM2, formatSignedPercent } from '../../data/format';
 import {
-  formatCount,
-  formatEuros,
-  formatEurosPerM2,
-  formatPercent,
-  formatRentPerM2,
-  formatSignedPercent,
-} from '../../data/format';
-import { METRICS } from '../../data/map';
-import type { DwellingType, GeoLevel } from '../../data/types';
+  BAR_METRICS,
+  type BarMetricKey,
+  fromExplorer,
+  fromRanking,
+  type InvestRow,
+  investorSummary,
+  parseDep,
+  placeHref,
+  type QuadrantAxis,
+  type QuadrantKey,
+  QUADRANTS,
+  quadrantView,
+  robustRange,
+} from '../../data/invest-view';
+import { codeCompare } from '../../data/levels';
+import { activeCount, applyScreenFilters, parseScreenFilters } from '../../data/screen-filters';
+import { normalize } from '../../data/search';
+import { LOW_CONFIDENCE_SALES } from '../../data/select';
+import type { DwellingType, RankingRow } from '../../data/types';
+import { BarRanking, useBarControls } from '../charts/bar-ranking';
 import { axisStyle, Chart, css } from '../charts/chart';
 import { FilterBar, FilterField, Segmented, Select } from '../components/controls';
 import { type Column, DataTable } from '../components/data-table';
 import { EmptyState, ErrorPanel, Panel, ReliabilityBadge, Ribbon } from '../components/panel';
-import { PlaceDetail } from '../components/place-detail';
 import { ScreenFilterPanel } from '../components/screen-filter-panel';
 import { NavLink, Shell } from '../components/shell';
+import { InvestSteps } from '../components/steps';
 import type { ScreenProps } from '../screen-props';
 
-type Scope = 'regions' | 'departements' | string; // a département code = its communes
 const PAGE = 200;
 
 const escapeHtml = (text: string) =>
   text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-const fmt = (base: string) => METRICS.find((m) => m.base === base)?.format ?? ((v: number) => String(v));
 const tone = (v: number | null) => (v == null ? undefined : v >= 0 ? 'pos' : 'neg');
+const formatScore = (v: number | null | undefined) => (v == null ? '—' : formatCount(Math.round(v)));
+const formatCashFlow = (v: number | null | undefined) => (v == null ? '—' : formatEuros(Math.round(v)));
+const BAR_FORMAT: Record<(typeof BAR_METRICS)[number]['kind'], (v: number) => string> = {
+  score: formatScore,
+  percent: formatPercent,
+  euros: formatCashFlow,
+};
+const axisPercent = (v: number) => `${Math.round(v * 100)} %`;
 
-const COLUMNS: Column<ExplorerRow>[] = [
-  { key: 'name', label: 'Lieu', render: (r) => r.name ?? r.code },
-  { key: 'n_sales', label: 'Ventes', numeric: true, info: 'n_sales', render: (r) => (
-    <>{formatCount(r.n_sales)} <ReliabilityBadge n={r.n_sales} /></>
-  ) },
-  { key: 'median_price_m2', label: '€/m²', numeric: true, info: 'median_price_m2', render: (r) => formatEurosPerM2(r.median_price_m2) },
-  { key: 'p25_price_m2', label: 'P25 – P75', numeric: true, sortable: false, render: (r) =>
-    r.p25_price_m2 == null ? '—' : `${Math.round(r.p25_price_m2)} – ${Math.round(r.p75_price_m2 ?? 0)}` },
-  { key: 'median_price', label: 'Prix médian', numeric: true, render: (r) => formatEuros(r.median_price) },
-  { key: 'yoy_change', label: '1 an', numeric: true, info: 'yoy_change', render: (r) => (
-    <span className={tone(r.yoy_change)}>{formatSignedPercent(r.yoy_change)}</span>
-  ) },
-  { key: 'cagr', label: 'Moy. / an', numeric: true, info: 'cagr', render: (r) => formatSignedPercent(r.cagr) },
-  { key: 'rent_m2', label: 'Loyer', numeric: true, info: 'rent_m2', render: (r) => formatRentPerM2(r.rent_m2) },
+/** Colour of each quadrant, from the theme tokens. */
+const QUADRANT_TOKEN: Record<QuadrantKey, string> = { up: '--pos', value: '--accent', growth: '--warn', weak: '--ink-3' };
+const QUADRANT_ORDER: QuadrantKey[] = ['value', 'up', 'weak', 'growth'];
+const GRID = { left: 56, right: 16, top: 12, bottom: 44 };
+
+const Risks = ({ row }: { row: InvestRow }) => (
+  <>
+    {row.flag_high_vacancy && <span className="cy-badge warn">vacance élevée</span>}{' '}
+    {row.flag_population_decline && <span className="cy-badge warn">population en baisse</span>}
+    {!row.flag_high_vacancy && !row.flag_population_decline && <span className="ink-3">—</span>}
+  </>
+);
+
+const columnsFor = (national: boolean): Column<InvestRow>[] => [
+  { key: 'name', label: 'Commune', render: (r) => (national && r.departement ? `${r.name} (${r.departement})` : r.name) },
+  { key: 'score', label: 'Score', numeric: true, info: 'score', render: (r) => formatScore(r.score) },
   { key: 'gross_yield', label: 'Rdt brut', numeric: true, info: 'gross_yield', render: (r) => formatPercent(r.gross_yield) },
   { key: 'net_yield', label: 'Rdt net', numeric: true, info: 'net_yield', render: (r) => formatPercent(r.net_yield) },
-  { key: 'cash_flow_monthly', label: 'Cash-flow', numeric: true, info: 'cash_flow_monthly', render: (r) =>
-    r.cash_flow_monthly == null ? '—' : <span className={tone(r.cash_flow_monthly)}>{Math.round(r.cash_flow_monthly)} €</span> },
-  { key: 'score', label: 'Score', numeric: true, info: 'score', render: (r) => (r.score == null ? '—' : String(Math.round(r.score))) },
-  { key: 'share_fg', label: 'F/G', numeric: true, info: 'share_fg', render: (r) => formatPercent(r.share_fg) },
+  { key: 'cash_flow_monthly', label: 'Cash-flow / mois', numeric: true, info: 'cash_flow_monthly', render: (r) =>
+    <span className={tone(r.cash_flow_monthly)}>{formatCashFlow(r.cash_flow_monthly)}</span> },
+  { key: 'median_price_m2', label: '€/m²', numeric: true, info: 'median_price_m2', render: (r) => formatEurosPerM2(r.median_price_m2) },
+  { key: 'median_price', label: 'Prix type', numeric: true, info: 'typical_price', render: (r) => formatEuros(r.median_price) },
+  { key: 'rent_m2', label: 'Loyer', numeric: true, info: 'rent_m2', render: (r) => formatRentPerM2(r.rent_m2) },
   { key: 'vacancy_rate', label: 'Vacance', numeric: true, info: 'vacancy_rate', render: (r) => formatPercent(r.vacancy_rate) },
-  { key: 'population_growth_yearly', label: 'Pop. / an', numeric: true, info: 'population_growth_yearly', render: (r) =>
-    formatSignedPercent(r.population_growth_yearly) },
-  { key: 'tfpb_rate', label: 'TF', numeric: true, info: 'tfpb_rate', render: (r) => formatPercent(r.tfpb_rate) },
+  { key: 'share_fg', label: 'F/G', numeric: true, info: 'share_fg', render: (r) => formatPercent(r.share_fg) },
+  { key: 'rent_control', label: 'Encadr.', info: 'rent_control', render: (r) => (r.rent_control == null ? '—' : r.rent_control ? 'Oui' : 'Non') },
+  { key: 'risks', label: 'Risques', sortable: false, render: (r) => <Risks row={r} /> },
+  { key: 'yoy_change', label: '1 an', numeric: true, info: 'yoy_change', render: (r) =>
+    <span className={tone(r.yoy_change)}>{formatSignedPercent(r.yoy_change)}</span> },
+  { key: 'cagr', label: 'Moy. / an', numeric: true, info: 'cagr', render: (r) => formatSignedPercent(r.cagr) },
+  { key: 'n_sales', label: 'Ventes', numeric: true, info: 'n_sales', render: (r) => <>{formatCount(r.n_sales)} <ReliabilityBadge n={r.n_sales} /></> },
+  { key: 'population', label: 'Habitants', numeric: true, render: (r) => formatCount(r.population) },
 ];
 
-const CSV_FIELDS: (keyof ExplorerRow & string)[] = [
-  'code', 'name', 'level', 'type', 'size', 'n_sales', 'reliability', 'median_price_m2', 'p25_price_m2', 'p75_price_m2',
-  'median_price', 'median_surface_m2', 'yoy_change', 'cagr', 'rent_m2', 'gross_yield', 'net_yield', 'cash_flow_monthly',
-  'cap_rate', 'score', 'share_fg', 'vacancy_rate', 'population', 'population_growth_yearly', 'tfpb_rate',
+const CSV_FIELDS: (keyof InvestRow & string)[] = [
+  'code', 'name', 'level', 'departement', 'region', 'type', 'size', 'n_sales', 'reliability', 'score', 'gross_yield', 'net_yield',
+  'cash_flow_monthly', 'cap_rate', 'median_price_m2', 'p25_price_m2', 'p75_price_m2', 'median_price', 'median_surface_m2', 'rent_m2',
+  'yoy_change', 'cagr', 'vacancy_rate', 'share_fg', 'rent_control', 'flag_high_vacancy', 'flag_population_decline', 'population',
+  'population_growth_yearly', 'tfpb_rate',
 ];
-
-const pathOf = (scope: Scope) =>
-  scope === 'regions' ? 'explorer/regions.json' : scope === 'departements' ? 'explorer/departements.json' : `explorer/communes/${scope}.json`;
+const SORTABLE = new Set<string>(CSV_FIELDS);
 
 const download = (name: string, text: string) => {
   const url = URL.createObjectURL(new Blob([`﻿${text}`], { type: 'text/csv;charset=utf-8' }));
@@ -82,43 +105,57 @@ const download = (name: string, text: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-export default function ExplorerScreen({ filters, params, onFilters, onParams, navigate }: ScreenProps) {
-  const scope: Scope = filters.level === 'departement' ? filters.code : params.scope === 'regions' ? 'regions' : 'departements';
-  const type: DwellingType = filters.type === 'house' ? 'house' : 'apartment';
-  const metric = METRICS.find((m) => m.base === filters.metric) ?? METRICS[0];
-  const metricField = EXPLORER_METRIC[metric.base] ?? 'median_price_m2';
-  const sort = { key: params.sort ?? metricField, dir: params.dir === 'asc' ? ('asc' as const) : ('desc' as const) };
+type Source =
+  | { key: string; kind: 'ranking'; period: string | null; rows: RankingRow[] }
+  | { key: string; kind: 'departement'; period: string | null; rows: ExplorerRow[] };
 
-  const [data, setData] = useState<{ scope: Scope; rows: ExplorerRow[]; period: string | null } | null>(null);
-  const [error, setError] = useState<{ scope: Scope; message: string } | null>(null);
-  const [departements, setDepartements] = useState<{ code: string; name: string }[]>([]);
+type Area = { code: string; name: string; region: string | null };
+
+export default function ExplorerScreen({ filters, params, onFilters, onParams, navigate }: ScreenProps) {
+  // `dep` is the URL of 017; old /explorer links carried the département as level + code
+  const dep = parseDep(params.dep) ?? (filters.level === 'departement' ? parseDep(filters.code) : null);
+  const type: DwellingType = filters.type === 'house' ? 'house' : 'apartment';
+  const size = filters.size;
+  const sourceKey = dep ? `dep:${dep}` : `fr:${type}:${size}`;
+  const sortKey = params.sort && SORTABLE.has(params.sort) ? params.sort : 'score';
+  const sort = { key: sortKey, dir: params.dir === 'asc' ? ('asc' as const) : ('desc' as const) };
+
+  const [source, setSource] = useState<Source | null>(null);
+  const [error, setError] = useState<{ key: string; message: string } | null>(null);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [regions, setRegions] = useState<{ code: string; name: string }[]>([]);
-  const screen = parseScreenFilters(params);
   const [query, setQuery] = useState('');
-  // a selection belongs to the table it was made in (the back button can change the table)
-  const [selection, setSelection] = useState<{ scope: Scope; row: ExplorerRow } | null>(null);
-  const selected = selection?.scope === scope ? selection.row : null;
-  const setSelected = (row: ExplorerRow | null) => setSelection(row ? { scope, row } : null);
   const [limit, setLimit] = useState(PAGE);
-  // bounds belong to one indicator: switching indicator starts with none
-  const [bounds, setBounds] = useState({ metric: '', min: '', max: '' });
+  const [axis, setAxis] = useState<QuadrantAxis>('yoy_change');
+  const [barKey, setBarKey] = useState<BarMetricKey>('score');
+  const bars = useBarControls('desc', 20, [10, 20, 50]);
   const [attempt, setAttempt] = useState(0);
+  const screen = parseScreenFilters(params);
 
   useEffect(() => {
     let current = true;
-    loadTable<ExplorerRow>(pathOf(scope)).then(
-      (table) => current && setData({ scope, rows: table.rows, period: table.period }),
-      (e: Error) => current && setError({ scope, message: e.message }),
-    );
+    const fail = (e: Error) => current && setError({ key: sourceKey, message: e.message });
+    if (dep) {
+      loadTable<ExplorerRow>(`explorer/communes/${dep}.json`).then(
+        (table) => current && setSource({ key: sourceKey, kind: 'departement', period: table.period, rows: table.rows }),
+        fail,
+      );
+    } else {
+      loadRanking(type, size).then(
+        (ranking) => current && setSource({ key: sourceKey, kind: 'ranking', period: ranking.period, rows: ranking.rows }),
+        fail,
+      );
+    }
     return () => {
       current = false;
     };
-  }, [scope, attempt]);
+  }, [sourceKey, dep, type, size, attempt]);
+
   useEffect(() => {
     loadTable<ExplorerRow>('explorer/departements.json').then((table) => {
-      const seen = new Map<string, string>();
-      table.rows.forEach((r) => seen.set(r.code, r.name));
-      setDepartements([...seen].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code)));
+      const seen = new Map<string, Area>();
+      table.rows.forEach((r) => seen.set(r.code, { code: r.code, name: r.name, region: r.parent }));
+      setAreas([...seen.values()].sort((a, b) => codeCompare(a.code, b.code)));
     }, () => undefined);
     loadTable<ExplorerRow>('explorer/regions.json').then((table) => {
       const seen = new Map<string, string>();
@@ -127,239 +164,305 @@ export default function ExplorerScreen({ filters, params, onFilters, onParams, n
     }, () => undefined);
   }, []);
 
-  const ready = data?.scope === scope ? data : null;
-  const failed = error?.scope === scope ? error.message : null;
-  const min = bounds.metric === metric.base ? bounds.min : '';
-  const max = bounds.metric === metric.base ? bounds.max : '';
-  const low = parseBound(min, metric.base);
-  const high = parseBound(max, metric.base);
-  const ranges: Ranges = low != null || high != null ? { [metricField]: [low, high] } : {};
-  const visible = ready
-    ? sortRows(applyScreenFilters(filterRows(ready.rows, { type, size: filters.size, reliable: filters.reliable }, ranges, query), screen), sort.key as keyof ExplorerRow, sort.dir)
-    : [];
-  const values = visible.map((r) => num(r[metricField]));
-  const known = values.filter((v): v is number => v != null).sort((a, b) => a - b);
-  const median = known.length ? known[Math.floor(known.length / 2)] : null;
-  const totalSales = visible.reduce((sum, r) => sum + (r.n_sales ?? 0), 0);
-  const hist = histogram(values, 24);
-  const selectedValue = selected ? num(selected[metricField]) : null;
-  const scopeLabel = scope === 'regions' ? 'Régions' : scope === 'departements' ? 'Départements' : `Communes · ${departements.find((d) => d.code === scope)?.name ?? scope}`;
+  const ready = source?.key === sourceKey ? source : null;
+  const failed = error?.key === sourceKey ? error.message : null;
+  const area = dep ? areas.find((a) => a.code === dep) ?? null : null;
+  const national = !dep;
+  const rows: InvestRow[] = !ready
+    ? []
+    : ready.kind === 'ranking'
+      ? fromRanking(ready.rows)
+      : fromExplorer(ready.rows, { type, size }, area?.region ?? null);
+  const needle = normalize(query);
+  const filtered = applyScreenFilters(rows, screen).filter((r) => !filters.reliable || r.n_sales >= LOW_CONFIDENCE_SALES);
+  const visible = sortRows(needle ? filtered.filter((r) => normalize(r.name).includes(needle)) : filtered, sort.key as keyof InvestRow, sort.dir);
+
+  const summary = investorSummary(filtered);
+  const quadrant = quadrantView(filtered, axis);
+  const barMetric = BAR_METRICS.find((m) => m.key === barKey) ?? BAR_METRICS[0];
+  const barFormat = BAR_FORMAT[barMetric.kind];
+  const scopeLabel = area ? `${area.name} (${area.code})` : dep ? `Département ${dep}` : 'Toute la France';
   const typeLabel = type === 'house' ? 'maisons' : 'appartements';
-  const format = fmt(metric.base);
+  const segmentLabel = `${typeLabel}${size === 'all' ? '' : ` · ${type === 'house' ? `${size} p.` : `T${size}`}`}`;
+  const open = (row: InvestRow) => navigate(placeHref(row, type));
 
-  const onSort = (key: string) =>
-    onParams({ sort: key, dir: sort.key === key && sort.dir === 'desc' ? 'asc' : 'desc' });
+  const onSort = (key: string) => onParams({ sort: key, dir: sort.key === key && sort.dir === 'desc' ? 'asc' : 'desc' });
 
-  const setScope = (next: string) => {
-    setSelected(null);
+  const setDep = (next: string) => {
     setLimit(PAGE);
-    if (next === 'regions' || next === 'departements') {
+    onParams({ dep: next || undefined });
+    if (filters.level !== 'france') {
       onFilters({ level: 'france', code: 'FR' });
-      onParams({ scope: next === 'regions' ? 'regions' : undefined });
-    } else {
-      onFilters({ level: 'departement', code: next });
     }
   };
 
-  const scatter = visible.filter((r) => r.gross_yield != null);
-  const maxSales = Math.max(1, ...scatter.map((r) => r.n_sales));
+  const guide = (
+    <>
+      Filtrez, puis ouvrez une ville ou passez à{' '}
+      <NavLink href="/property" navigate={navigate}>② Analyser un bien</NavLink>
+    </>
+  );
 
   return (
     <Shell
-      active="explorer"
-      title="Explorer"
+      active="invest"
+      title="Trouver où investir"
       navigate={navigate}
-      crumbs={[{ label: 'France', href: '/explorer' }, ...(scope.length <= 3 ? [{ label: scopeLabel }] : [])]}
+      steps={<InvestSteps current={1} navigate={navigate} hint={guide} />}
+      crumbs={[{ label: 'Investir', href: '/investir' }, { label: scopeLabel }]}
       tools={
         <button type="button" className="cy-button ghost" disabled={visible.length === 0}
-          onClick={() => download(`cyfouri_${scope}_${type}_${filters.size}_${ready?.period ?? ''}.csv`, toCsv(visible, CSV_FIELDS))}>
+          onClick={() => download(`cyfouri_investir_${dep ?? 'france'}_${type}_${size}_${ready?.period ?? ''}.csv`, toCsv(visible, CSV_FIELDS))}>
           Exporter CSV
         </button>
       }
       filters={
-        <FilterBar filters={filters} onFilters={onFilters} show={['type', 'size', 'metric', 'reliable']}>
-          <FilterField label="Territoire">
-            <div style={{ display: 'flex', gap: 6 }}>
-              <Segmented
-                label="Niveau"
-                options={[
-                  { value: 'regions', label: 'Régions' },
-                  { value: 'departements', label: 'Départements' },
-                ]}
-                value={scope === 'regions' ? 'regions' : 'departements'}
-                onChange={setScope}
-              />
-              <Select
-                label="Communes d’un département"
-                options={[{ value: '', label: 'Communes de…' }, ...departements.map((d) => ({ value: d.code, label: `${d.code} · ${d.name}` }))]}
-                value={scope.length <= 3 ? scope : ''}
-                onChange={(code) => code && setScope(code)}
-              />
-            </div>
+        <FilterBar filters={filters} onFilters={onFilters} show={['type', 'size', 'reliable']}>
+          <FilterField label="Où investir">
+            <Select
+              label="Toute la France ou un département"
+              options={[{ value: '', label: 'Toute la France' }, ...areas.map((a) => ({ value: a.code, label: `${a.code} · ${a.name}` }))]}
+              value={dep ?? ''}
+              onChange={setDep}
+            />
           </FilterField>
+          {/* the 015 screen filters join the sidebar column (020) */}
+          <ScreenFilterPanel params={params} onParams={onParams} active={activeCount(screen)} regions={national ? regions : null} />
         </FilterBar>
       }>
       {failed ? (
-        <ErrorPanel message={`Tableau indisponible : ${failed}`} onRetry={() => setAttempt((a) => a + 1)} />
+        <ErrorPanel message={`Communes indisponibles : ${failed}`} onRetry={() => setAttempt((a) => a + 1)} />
       ) : !ready ? (
         <EmptyState>Chargement…</EmptyState>
       ) : (
         <div className="cy-grid">
-          <ScreenFilterPanel params={params} onParams={onParams} active={activeCount(screen)} regions={scope === 'departements' ? regions : null} />
           <Panel span={12} flush>
             <Ribbon
               items={[
-                { label: 'Lieux affichés', value: formatCount(visible.length), detail: `${scopeLabel} · ${typeLabel}` },
-                { label: 'Ventes', value: formatCount(totalSales), detail: `année ${ready.period ?? '—'}`, info: 'n_sales' },
-                { label: 'Médiane des lieux', value: median == null ? '—' : format(median), detail: metric.label, info: metric.base },
-                { label: 'Plus bas', value: known.length ? format(known[0]) : '—' },
-                { label: 'Plus haut', value: known.length ? format(known[known.length - 1]) : '—' },
+                { label: 'Villes', value: formatCount(summary.count), detail: `${scopeLabel} · ${segmentLabel}` },
+                { label: 'Rendement brut médian', value: formatPercent(summary.grossYield), info: 'gross_yield' },
+                { label: 'Rendement net médian', value: formatPercent(summary.netYield), info: 'net_yield' },
+                {
+                  label: 'Cash-flow positif',
+                  value: formatPercent(summary.positiveCashFlow),
+                  detail: 'part des villes, bien type',
+                  info: 'cash_flow_monthly',
+                },
+                { label: 'Prix type médian', value: formatEuros(summary.price), detail: `année ${ready.period ?? '—'}`, info: 'typical_price' },
+                { label: 'Score médian', value: formatScore(summary.score), info: 'score' },
               ]}
             />
+            <div className="cy-note" style={{ padding: '8px 14px', borderTop: '1px solid var(--line)' }}>
+              {guide}.{' '}
+              {national
+                ? `France entière : communes d’au moins ${LOW_CONFIDENCE_SALES} ventes. Choisissez un département pour voir aussi les plus petites (dès 10 ventes).`
+                : 'Communes d’au moins 10 ventes ; sous 30 ventes, la ligne porte un badge de fiabilité faible.'}{' '}
+              {dep && <NavLink href={`/departement/${dep}?type=${type}`} navigate={navigate}>Marché du département →</NavLink>}
+            </div>
           </Panel>
+
           <Panel
-            span={8}
-            flush
-            title={`${scopeLabel} · ${typeLabel}${filters.size === 'all' ? '' : ` · ${type === 'house' ? `${filters.size} p.` : `T${filters.size}`}`}`}
+            span={12}
+            title="Rendement × évolution des prix"
+            info="gross_yield"
             tools={
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input className="cy-input" type="search" placeholder="Filtrer par nom" aria-label="Filtrer par nom" value={query}
-                  onChange={(e) => setQuery(e.target.value)} style={{ width: 150 }} />
-                <span className="ink-3" style={{ fontSize: 'var(--fs-small)' }}>{metric.label}{PERCENT_METRICS.has(metric.base) ? ' (%)' : ''}</span>
-                <input className="cy-input num" inputMode="decimal" placeholder="min" aria-label={`${metric.label} minimum`} value={min}
-                  onChange={(e) => setBounds({ metric: metric.base, min: e.target.value, max })} style={{ width: 70 }} />
-                <input className="cy-input num" inputMode="decimal" placeholder="max" aria-label={`${metric.label} maximum`} value={max}
-                  onChange={(e) => setBounds({ metric: metric.base, min, max: e.target.value })} style={{ width: 70 }} />
+              <Segmented
+                label="Évolution des prix"
+                options={[
+                  { value: 'yoy_change', label: 'Sur 1 an' },
+                  { value: 'cagr', label: 'Moyenne / an' },
+                ]}
+                value={axis}
+                onChange={setAxis}
+              />
+            }>
+            {quadrant.points.length === 0 ? (
+              <EmptyState>Pas de rendement ni d’évolution publiés pour ces villes.</EmptyState>
+            ) : (
+              <QuadrantChart view={quadrant} axis={axis} onPick={open} />
+            )}
+          </Panel>
+
+          <Panel
+            span={12}
+            title={`Classement · ${barMetric.label}`}
+            info={barMetric.key}
+            tools={
+              <div className="cy-chart-tools">
+                <Select
+                  label="Mesure"
+                  value={barKey}
+                  onChange={setBarKey}
+                  options={BAR_METRICS.map((m) => ({ value: m.key, label: m.label }))}
+                />
+                {bars.controls}
               </div>
             }>
+            {filtered.length === 0 ? (
+              <EmptyState>Aucune ville ne passe ces filtres.</EmptyState>
+            ) : (
+              <BarRanking
+                items={filtered.map((r) => ({
+                  code: r.code,
+                  label: r.name,
+                  value: barMetric.value(r),
+                  detail: `${national && r.departement ? `Dép. ${r.departement} · ` : ''}${formatCount(r.n_sales)} ventes`,
+                }))}
+                metricLabel={barMetric.label}
+                format={barFormat}
+                signed={barMetric.signed}
+                sort={bars.sort}
+                top={bars.top}
+                height={340}
+                onPick={(code) => {
+                  const row = filtered.find((r) => r.code === code);
+                  if (row) {
+                    open(row);
+                  }
+                }}
+              />
+            )}
+          </Panel>
+
+          <Panel
+            span={12}
+            flush
+            title={`Communes · ${scopeLabel} · ${segmentLabel}`}
+            tools={
+              <input className="cy-input" type="search" placeholder="Filtrer par nom" aria-label="Filtrer par nom" value={query}
+                onChange={(e) => setQuery(e.target.value)} style={{ width: 170 }} />
+            }>
             <DataTable
-              columns={COLUMNS}
+              columns={columnsFor(national)}
               rows={visible.slice(0, limit)}
-              rowKey={(r) => `${r.level}:${r.code}`}
+              rowKey={(r) => r.code}
               sort={sort}
               onSort={onSort}
-              selected={selected ? `${selected.level}:${selected.code}` : null}
-              onRowClick={setSelected}
-              maxHeight={560}
+              onRowClick={open}
+              maxHeight={600}
               empty={
                 <EmptyState>
-                  {ready.rows.length === 0
-                    ? 'Pas de ventes publiées pour ce territoire (hors DVF ou trop peu de ventes).'
-                    : 'Aucun lieu ne passe ces filtres. Élargissez la taille, décochez « fiables » ou videz min / max.'}
+                  {rows.length === 0
+                    ? 'Pas de commune publiée pour ce segment (hors DVF, ou moins de 10 ventes).'
+                    : 'Aucune ville ne passe ces filtres. Élargissez la taille, le budget ou réinitialisez les filtres.'}
                 </EmptyState>
               }
             />
             {visible.length > limit && (
               <div style={{ padding: 8, borderTop: '1px solid var(--line)' }}>
                 <button type="button" className="cy-button ghost" onClick={() => setLimit((l) => l + PAGE)}>
-                  Afficher {Math.min(PAGE, visible.length - limit)} de plus ({formatCount(visible.length - limit)} restants)
+                  Afficher {Math.min(PAGE, visible.length - limit)} de plus ({formatCount(visible.length - limit)} restantes)
                 </button>
               </div>
             )}
           </Panel>
-          <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column' }}>
-            <Panel span={12} title="Prix × rentabilité brute" info="gross_yield">
-              {scatter.length === 0 ? (
-                <EmptyState>Pas de rentabilité publiée pour ce segment.</EmptyState>
-              ) : (
-                <Chart
-                  ariaLabel="Nuage prix au m² et rentabilité brute"
-                  height={260}
-                  onClick={(p) => {
-                    const row = scatter[p.dataIndex ?? -1];
-                    if (row) {
-                      setSelected(row);
-                    }
-                  }}
-                  option={{
-                    grid: { left: 48, right: 12, top: 12, bottom: 36 },
-                    tooltip: {
-                      trigger: 'item',
-                      formatter: (p: { dataIndex: number }) => {
-                        const r = scatter[p.dataIndex];
-                        return `<b>${escapeHtml(r.name ?? r.code)}</b><br/>${formatEurosPerM2(r.median_price_m2)} · ${formatPercent(r.gross_yield)}<br/>${formatCount(r.n_sales)} ventes`;
-                      },
-                    },
-                    xAxis: { type: 'value', name: '€/m²', nameLocation: 'middle', nameGap: 22, scale: true, ...axisStyle() },
-                    yAxis: { type: 'value', scale: true, ...axisStyle(), axisLabel: { ...axisStyle().axisLabel, formatter: (v: number) => `${(v * 100).toFixed(0)} %` } },
-                    series: [
-                      {
-                        type: 'scatter',
-                        data: scatter.map((r) => [r.median_price_m2, r.gross_yield]),
-                        symbolSize: (_: unknown, p: { dataIndex: number }) => 4 + 14 * Math.sqrt(scatter[p.dataIndex].n_sales / maxSales),
-                        itemStyle: {
-                          color: (p: { dataIndex: number }) =>
-                            selected && scatter[p.dataIndex].code === selected.code ? css('--neg') : css('--accent'),
-                          opacity: 0.7,
-                        },
-                      },
-                    ],
-                  }}
-                />
-              )}
-            </Panel>
-            <Panel span={12} title={`Distribution · ${metric.label}`} info={metric.base}>
-              {hist.counts.length === 0 ? (
-                <EmptyState>Pas de valeur pour cet indicateur.</EmptyState>
-              ) : (
-                <Chart
-                  ariaLabel={`Distribution de l’indicateur ${metric.label}`}
-                  height={170}
-                  option={{
-                    grid: { left: 36, right: 12, top: 12, bottom: 28 },
-                    tooltip: { trigger: 'axis' },
-                    xAxis: {
-                      type: 'category',
-                      data: hist.counts.map((_, i) => format(hist.edges[i])),
-                      ...axisStyle(),
-                      axisLabel: { ...axisStyle().axisLabel, interval: 5 },
-                    },
-                    yAxis: { type: 'value', minInterval: 1, ...axisStyle() },
-                    series: [
-                      {
-                        type: 'bar',
-                        barCategoryGap: 1,
-                        data: hist.counts.map((count, i) => ({
-                          value: count,
-                          itemStyle: {
-                            color:
-                              selectedValue != null && selectedValue >= hist.edges[i] && selectedValue <= hist.edges[i + 1]
-                                ? css('--neg')
-                                : css('--accent'),
-                          },
-                        })),
-                      },
-                    ],
-                  }}
-                />
-              )}
-              <div className="cy-note">
-                {catalogueEntry(metric.base)?.howToRead ?? ''}
-                {selected && selectedValue != null && ` En rouge : ${selected.name} (${format(selectedValue)}).`}
-              </div>
-            </Panel>
-            <Panel span={12} title="Sélection" flush>
-              {selected ? (
-                <>
-                  <PlaceDetail level={selected.level as GeoLevel} code={selected.code} type={type} navigate={navigate} />
-                  {selected.level === 'departement' && (
-                    <div style={{ padding: '0 14px 12px' }}>
-                      <button type="button" className="cy-button" onClick={() => setScope(selected.code)}>
-                        Voir ses communes →
-                      </button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <EmptyState>
-                  Cliquez une ligne ou un point pour voir sa fiche. Les lignes comparent des biens du même type et de la
-                  même taille, sur la dernière année complète. <NavLink href="/method" navigate={navigate}>Méthode</NavLink>
-                </EmptyState>
-              )}
-            </Panel>
-          </div>
         </div>
       )}
     </Shell>
   );
 }
+
+type QuadrantChartProps = {
+  view: ReturnType<typeof quadrantView>;
+  axis: QuadrantAxis;
+  onPick: (row: InvestRow) => void;
+};
+
+/** Where each quadrant name sits over the plot (the plot corners are always in their quadrant). */
+const CORNER_STYLE: Record<QuadrantKey, CSSProperties> = {
+  up: { top: GRID.top + 4, right: GRID.right + 6, textAlign: 'right' },
+  value: { top: GRID.top + 4, left: GRID.left + 6 },
+  growth: { bottom: GRID.bottom + 6, right: GRID.right + 6, textAlign: 'right' },
+  weak: { bottom: GRID.bottom + 6, left: GRID.left + 6 },
+};
+
+/** Gross yield (y) against the price change (x), dashed medians as the cross, a name in each corner. */
+const QuadrantChart = ({ view, axis, onPick }: QuadrantChartProps) => {
+  const { points, xMid, yMid, counts } = view;
+  // with many towns, a few extreme changes would squash the others into a line: the frame then holds 96 % of them
+  const trim = points.length >= 50 ? 0.02 : 0;
+  const [xMin, xMax] = robustRange(points.map((p) => p.x), trim, 1 - trim, xMid);
+  const [yLo, yMax] = robustRange(points.map((p) => p.y), trim / 2, 1 - trim / 2, yMid);
+  const yMin = Math.max(0, yLo);
+  const outside = points.filter((p) => p.x < xMin || p.x > xMax || p.y < yMin || p.y > yMax).length;
+  const maxSales = Math.max(1, ...points.map((p) => p.row.n_sales));
+  const xLabel = axis === 'yoy_change' ? 'Évolution du prix sur 1 an' : 'Évolution moyenne par an';
+  return (
+    <>
+      <div style={{ position: 'relative' }}>
+        <Chart
+          ariaLabel={`Rendement brut et ${xLabel.toLowerCase()} de ${points.length} villes`}
+          height={360}
+          onClick={(p) => {
+            const point = p.seriesName === 'villes' ? points[p.dataIndex ?? -1] : undefined;
+            if (point) {
+              onPick(point.row);
+            }
+          }}
+          option={{
+            grid: { ...GRID },
+            legend: { show: false },
+            tooltip: {
+              trigger: 'item',
+              formatter: (p: { dataIndex: number; seriesName?: string }) => {
+                const point = p.seriesName === 'villes' ? points[p.dataIndex] : undefined;
+                if (!point) {
+                  return '';
+                }
+                const r = point.row;
+                return `<b>${escapeHtml(r.name)}</b>${r.departement ? ` (${r.departement})` : ''}<br/>Rendement brut : ${formatPercent(r.gross_yield)}`
+                  + `<br/>${xLabel} : ${formatSignedPercent(point.x)}<br/>${formatCount(r.n_sales)} ventes · ${QUADRANTS[point.quadrant].label}`;
+              },
+            },
+            xAxis: {
+              type: 'value', min: xMin, max: xMax, name: xLabel, nameLocation: 'middle', nameGap: 26, ...axisStyle(),
+              axisLabel: { ...axisStyle().axisLabel, formatter: axisPercent, showMinLabel: false, showMaxLabel: false },
+            },
+            yAxis: {
+              type: 'value', min: yMin, max: yMax, name: 'Rendement brut', nameLocation: 'middle', nameGap: 38, ...axisStyle(),
+              axisLabel: { ...axisStyle().axisLabel, formatter: axisPercent, showMinLabel: false, showMaxLabel: false },
+            },
+            series: [
+              {
+                name: 'villes',
+                type: 'scatter',
+                cursor: 'pointer',
+                clip: true,
+                data: points.map((p) => [p.x, p.y]),
+                symbolSize: (_: unknown, p: { dataIndex: number }) => 4 + 14 * Math.sqrt(points[p.dataIndex].row.n_sales / maxSales),
+                itemStyle: { color: (p: { dataIndex: number }) => css(QUADRANT_TOKEN[points[p.dataIndex].quadrant]), opacity: 0.7 },
+                markLine: {
+                  symbol: 'none',
+                  silent: true,
+                  lineStyle: { color: css('--ink-2'), type: 'dashed' },
+                  label: { color: css('--ink-3'), fontSize: 10, formatter: (l: { value: number }) => `médiane ${formatPercent(l.value)}` },
+                  data: [{ xAxis: xMid }, { yAxis: yMid }],
+                },
+              },
+            ],
+          }}
+        />
+        {(Object.keys(QUADRANTS) as QuadrantKey[]).map((key) => (
+          <span key={key} aria-hidden style={{
+            position: 'absolute', ...CORNER_STYLE[key], pointerEvents: 'none', fontSize: 'var(--fs-small)', fontWeight: 600,
+            color: `var(${QUADRANT_TOKEN[key]})`,
+          }}>
+            {QUADRANTS[key].label}
+          </span>
+        ))}
+      </div>
+      <div className="cy-note" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '4px 16px', marginTop: 6 }}>
+        {QUADRANT_ORDER.map((key) => (
+          <span key={key}>
+            <span aria-hidden style={{ display: 'inline-block', width: 8, height: 8, marginRight: 6, background: `var(${QUADRANT_TOKEN[key]})` }} />
+            <b>{QUADRANTS[key].label}</b> · {formatCount(counts[key])} ville{counts[key] > 1 ? 's' : ''} — {QUADRANTS[key].hint}
+          </span>
+        ))}
+      </div>
+      <div className="cy-note" style={{ marginTop: 4 }}>
+        Croix pointillée : les médianes des villes affichées. Taille du point : nombre de ventes. Cliquez un point pour ouvrir la commune.
+        {outside > 0 && ` ${formatCount(outside)} ville${outside > 1 ? 's' : ''} aux valeurs extrêmes hors du cadre (voir le tableau).`}
+      </div>
+    </>
+  );
+};

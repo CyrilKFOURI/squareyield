@@ -17,8 +17,12 @@ export const formatSignedPercent = (value: number | null | undefined): string =>
   if (value == null) {
     return '—';
   }
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${decimal.format(value * 100)} %`;
+  const text = decimal.format(value * 100);
+  // a change that rounds to zero carries no sign ("-0,0 %" reads as a fall)
+  if (/^-?0(,0+)?$/.test(text)) {
+    return `${text.replace('-', '')} %`;
+  }
+  return `${value > 0 ? '+' : ''}${text} %`;
 };
 
 export const formatDecimal = (value: number | null | undefined): string =>

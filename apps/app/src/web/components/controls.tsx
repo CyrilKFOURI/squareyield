@@ -71,7 +71,25 @@ export const FilterField = ({ label, info, children }: { label: string; info?: s
   </div>
 );
 
-export const sizeLabel = (type: Filters['type'], size: string): string =>
+/**
+ * One row of a form (020): label column (wraps), control column of fixed width, unit column of fixed width, so every
+ * input of a `.cy-rows` block starts and ends at the same x whatever the label or unit length.
+ */
+export const FieldRow = ({ label, info, hint, unit, children }: { label: string; info?: string; hint?: ReactNode; unit?: string; children: ReactNode }) => (
+  <label className="cy-row">
+    <span className="cy-row-label">
+      <span>
+        {label}
+        {info && <> <InfoTip k={info} /></>}
+      </span>
+      {hint && <small>{hint}</small>}
+    </span>
+    {children}
+    <span className="cy-row-unit">{unit}</span>
+  </label>
+);
+
+export const sizeLabel =(type: Filters['type'], size: string): string =>
   size === 'all' ? 'Toutes' : type === 'house' ? `${size} p.` : `T${size}`;
 
 export type FilterKey = 'type' | 'size' | 'condition' | 'period' | 'metric' | 'reliable';

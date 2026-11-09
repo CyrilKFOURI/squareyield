@@ -1,6 +1,6 @@
 // ECharts wrapper for DOM screens: only the chart types and components the dashboard uses are bundled,
 // colours and fonts come from the theme tokens so charts follow light / dark.
-import { BarChart, BoxplotChart, CustomChart, LineChart, ScatterChart } from 'echarts/charts';
+import { BarChart, BoxplotChart, CustomChart, HeatmapChart, LineChart, ScatterChart } from 'echarts/charts';
 import {
   DataZoomComponent,
   GridComponent,
@@ -9,16 +9,18 @@ import {
   MarkLineComponent,
   MarkPointComponent,
   TooltipComponent,
+  VisualMapComponent,
 } from 'echarts/components';
 import * as echarts from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { type CSSProperties, useEffect, useRef } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
+import { phoneHeight } from '../hooks/phone';
 import { useDark } from '../hooks/use-dark';
 
 echarts.use([
-  LineChart, BarChart, ScatterChart, BoxplotChart, CustomChart, GridComponent, TooltipComponent, LegendComponent,
-  MarkLineComponent, MarkAreaComponent, MarkPointComponent, DataZoomComponent, CanvasRenderer,
+  LineChart, BarChart, ScatterChart, BoxplotChart, CustomChart, HeatmapChart, GridComponent, TooltipComponent, LegendComponent,
+  MarkLineComponent, MarkAreaComponent, MarkPointComponent, DataZoomComponent, VisualMapComponent, CanvasRenderer,
 ]);
 
 export type ChartOption = echarts.EChartsCoreOption;
@@ -37,6 +39,8 @@ export const css = (name: string): string =>
 
 /** Axis, grid and tooltip styling shared by every chart. */
 export const baseOption = (): ChartOption => ({
+  // no entry animation: each animation frame redraws every label, seconds of work on a weak computer (021)
+  animation: false,
   textStyle: { fontFamily: 'Inter, ui-sans-serif, system-ui', color: css('--ink-2'), fontSize: 11 },
   color: SERIES_COLORS,
   grid: { left: 52, right: 16, top: 24, bottom: 28, containLabel: false },
@@ -76,8 +80,41 @@ export const Chart = ({ option, height = 220, style, onClick, ariaLabel }: Chart
     clickRef.current = onClick;
   }, [onClick]);
 
+  // drawn only when about to be seen, each chart in its own task: no page-long freeze on a weak computer (021);
+  // in an idle moment when the browser has one, so a finger scrolling a phone page is not held up (023)
+  const [visible, setVisible] = useState(false);
   useEffect(() => {
-    if (!ref.current) {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let idle: number | undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          if ('requestIdleCallback' in window) {
+            idle = window.requestIdleCallback(() => setVisible(true), { timeout: 600 });
+          } else {
+            timer = setTimeout(() => setVisible(true), 0);
+          }
+        }
+      },
+      { rootMargin: '800px 0px' },
+    );
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+      if (idle !== undefined) {
+        window.cancelIdleCallback(idle);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !ref.current) {
       return;
     }
     const instance = echarts.init(ref.current, undefined, { renderer: 'canvas' });
@@ -90,13 +127,13 @@ export const Chart = ({ option, height = 220, style, onClick, ariaLabel }: Chart
       instance.dispose();
       chart.current = null;
     };
-  }, []);
+  }, [visible]);
 
   // colours come from the theme tokens: redraw when the theme changes
   const dark = useDark();
   useEffect(() => {
     chart.current?.setOption({ ...baseOption(), ...option }, { notMerge: true });
-  }, [option, dark]);
+  }, [option, dark, visible]);
 
-  return <div ref={ref} role="img" aria-label={ariaLabel} style={{ width: '100%', height, ...style }} />;
+  return <div ref={ref} role="img" aria-label={ariaLabel} style={{ width: '100%', height: typeof height === 'number' ? phoneHeight(height) : height, ...style }} />;
 };

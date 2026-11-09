@@ -6,6 +6,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = PROJECT_ROOT / "data"
 SALES_PATH = DATA_DIR / "clean" / "dvf" / "sales.parquet"
+# sale by sale with address and parcel point (pipeline `rea sales`): read by the local API only, never by training
+LOCAL_SALES_PATH = DATA_DIR / "local" / "sales.parquet"
+LEVELS_DIR = DATA_DIR / "serve" / "levels" / "departements"
 MARTS_DIR = DATA_DIR / "marts"
 MODELS_DIR = DATA_DIR / "models"
 
@@ -67,6 +70,8 @@ class Training:
     selection_sample: int = 300_000  # validation rows used for permutation importance
     selection_repeats: int = 3
     interval_coverage: float = 0.80  # P10–P90
+    # skip feature selection and train on these groups (the compact variant reuses the full model's choice)
+    fixed_groups: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -75,3 +80,24 @@ class Config:
     cleaning: Cleaning = Cleaning()
     encoding: Encoding = Encoding()
     training: Training = Training()
+    model_name: str = MODEL_NAME
+
+
+# Browser variant (docs/features/022-full-frontend/spec.md rule 2): few shallow trees so the JSON
+# export stays a few MB; same data, split, encodings and intervals recipe as the full model.
+COMPACT_MODEL_NAME = f"{MODEL_NAME}-compact"
+COMPACT_GROUPS = (
+    "enc_section", "surface", "land", "lots", "enc_commune", "coordinates", "income", "dependencies",
+    "housing_market", "rooms", "type", "population", "new_build", "enc_departement", "carrez", "jobs",
+)
+
+
+def compact_config() -> Config:
+    full = Training()
+    training = Training(
+        params=full.params | {"num_leaves": 63, "learning_rate": 0.1},
+        max_rounds=1_000,
+        early_stopping_rounds=50,
+        fixed_groups=COMPACT_GROUPS,
+    )
+    return Config(training=training, model_name=COMPACT_MODEL_NAME)

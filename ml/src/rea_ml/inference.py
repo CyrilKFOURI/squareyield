@@ -79,13 +79,14 @@ class PriceCheckModel:
             raise ValueError(f"No location known for communes {unknown} (Alsace-Moselle and Mayotte are not in DVF)")
         return rows
 
-    def estimate(self, properties: list[dict]) -> list[dict]:
+    def estimate(self, properties: list[dict], explain: bool = True) -> list[dict]:
+        """explain=False skips the exact TreeSHAP effects (most of the time of one estimate)."""
         rows = self._rows(properties)
         encodings = self.encoder.transform(rows)
         columns = self.spec["feature_columns"]
         x = build_features(rows, encodings, self.socio)[columns]
         log_pred = self.booster.predict(x)
-        contributions = self.booster.predict(x, pred_contrib=True)
+        contributions = self.booster.predict(x, pred_contrib=True) if explain else None
 
         density = pd.cut(encodings["n_section"], [-1, 9, 99, np.inf], labels=["sparse", "medium", "dense"])
         segments = rows["property_type"].astype(str) + "/" + density.astype(str)
@@ -104,7 +105,7 @@ class PriceCheckModel:
                 "interval_coverage": self.spec["interval_coverage"],
                 "location_precision": rows.at[i, "location_precision"],
                 "data_density": str(density.iloc[i]),
-                "explanation": self._explain(contributions[i], columns),
+                "explanation": self._explain(contributions[i], columns) if explain else None,
                 "reference_period": self.spec["reference_period"],
             }
             if prop.get("asked_price"):

@@ -8,7 +8,7 @@ export default function SimulatorRoute() {
   return (
     <>
       <Head>
-        <title>Simulateur · Cyfouri</title>
+        <title>Simulateur · SquareYield</title>
         <meta name="robots" content="noindex" />
       </Head>
       <SimulatorScreen {...screen} dom={{ style: { flex: 1 } }} />

@@ -1,0 +1,14 @@
+{
+  "name": "SquareYield",
+  "short_name": "SquareYield",
+  "description": "SquareYield est une app d'analyse de l'investissement locatif en France : prix, loyers et rendement au m², commune par commune.",
+  "lang": "fr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f2ec",
+  "theme_color": "#fbfaf7",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

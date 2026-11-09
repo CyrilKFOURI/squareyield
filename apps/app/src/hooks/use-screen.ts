@@ -5,8 +5,9 @@ import { DEFAULT_FILTERS, type Filters, parseFilters, toParams } from '@/data/fi
 
 const FILTER_KEYS = Object.keys(DEFAULT_FILTERS);
 
-export const useScreen = () => {
-  const raw = useLocalSearchParams<Record<string, string>>();
+/** `fixed` pins params a route owns (the level of /departement/[code]). */
+export const useScreen = (fixed: Record<string, string> = {}) => {
+  const raw = { ...useLocalSearchParams<Record<string, string>>(), ...fixed };
   const filters = parseFilters(raw);
   const params = Object.fromEntries(
     Object.entries(raw).filter(([key, value]) => !FILTER_KEYS.includes(key) && typeof value === 'string'),

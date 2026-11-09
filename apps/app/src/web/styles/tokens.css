@@ -78,8 +78,10 @@
   --fs-value-lg: 20px;
   --fs-title: 17px;
   --radius: 3px;
-  --sidebar: 212px;
+  --sidebar: 240px; /* wide enough for the filters column (020) */
   --topbar: 44px;
+  --phone-head: 52px; /* phone shell (023) */
+  --tabbar: 56px;
   --panel-head: 32px;
   --gap: 0px;
 }

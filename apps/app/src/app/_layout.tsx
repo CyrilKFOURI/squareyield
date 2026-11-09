@@ -7,7 +7,7 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       {/* dashboard screens draw their own shell (sidebar, top bar) */}
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" options={{ title: 'Cyfouri' }} />
+        <Stack.Screen name="index" options={{ title: 'SquareYield' }} />
         <Stack.Screen name="place/[level]/[code]" options={{ title: '' }} />
         <Stack.Screen name="simulator" options={{ title: 'Simulateur' }} />
         <Stack.Screen name="property" options={{ title: 'Analyser un bien' }} />

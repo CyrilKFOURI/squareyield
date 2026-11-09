@@ -1,6 +1,23 @@
-// Explorer screen filters (docs/features/015-advanced-filters/spec.md): parsed from the URL, applied to the
-// published explorer rows. Selection only; a row missing a filtered value is dropped while that filter is on.
-import type { ExplorerRow } from './explorer.ts';
+// Screen filters of Investir ① (docs/features/015-advanced-filters/spec.md): parsed from the URL, applied to the
+// commune rows of src/data/invest-view.ts (national ranking or one département). Selection only; a row missing a
+// filtered value is dropped while that filter is on.
+import type { InvestRow } from './invest-view.ts';
+
+/** Fields the filters read; `median_price` is the typical price of the segment (budget). */
+export type FilterableRow = Pick<
+  InvestRow,
+  | 'median_price'
+  | 'median_price_m2'
+  | 'gross_yield'
+  | 'cash_flow_monthly'
+  | 'population'
+  | 'vacancy_rate'
+  | 'share_fg'
+  | 'rent_control'
+  | 'flag_high_vacancy'
+  | 'flag_population_decline'
+  | 'region'
+>;
 
 export type ScreenFilters = {
   budget: number | null;
@@ -52,7 +69,7 @@ export const activeCount = (f: ScreenFilters): number =>
 const within = (value: number | null | undefined, min: number | null, max: number | null) =>
   (min == null && max == null) || (value != null && (min == null || value >= min) && (max == null || value <= max));
 
-export const applyScreenFilters = (rows: ExplorerRow[], f: ScreenFilters): ExplorerRow[] =>
+export const applyScreenFilters = <R extends FilterableRow>(rows: R[], f: ScreenFilters): R[] =>
   rows.filter(
     (r) =>
       within(r.median_price, null, f.budget) &&
@@ -64,5 +81,5 @@ export const applyScreenFilters = (rows: ExplorerRow[], f: ScreenFilters): Explo
       within(r.share_fg, null, f.fgmax) &&
       (f.rentControl == null || Boolean(r.rent_control) === (f.rentControl === 'in')) &&
       (!f.riskyOut || (!r.flag_high_vacancy && !r.flag_population_decline)) &&
-      (f.region == null || r.parent === f.region),
+      (f.region == null || r.region === f.region),
   );

@@ -17,11 +17,13 @@ import { formatDecimal, formatEuros, formatEurosPerM2, formatPercent, formatSign
 import { latestCell, yieldFor } from '../../data/select';
 import type { DwellingType } from '../../data/types';
 import { axisStyle, Chart, css } from '../charts/chart';
-import { FilterBar, Segmented, sizeLabel } from '../components/controls';
+import { FieldRow, FilterBar, Segmented, sizeLabel } from '../components/controls';
 import { DataTable } from '../components/data-table';
 import { InfoTip, Panel, Ribbon } from '../components/panel';
 import { NavLink, Shell } from '../components/shell';
+import { InvestSteps } from '../components/steps';
 import type { ScreenProps } from '../screen-props';
+import { TableWrap } from '../components/table-wrap';
 
 type Form = Record<keyof Omit<DealInput, 'isNewBuild'>, string>;
 type Tab = 'cash' | 'tax' | 'long' | 'brrrr';
@@ -156,25 +158,30 @@ export default function SimulatorScreen({ filters, params, onFilters, onParams, 
   const value = (y: number) => input.price * (1 + priceGrowth) ** y;
 
   return (
-    <Shell active="simulator" title="Simulateur" navigate={navigate} crumbs={[{ label: prefill?.label ?? 'Valeurs d’exemple' }]}
+    <Shell active="invest" title="Simulateur" navigate={navigate}
+      crumbs={[{ label: 'Investir', href: '/investir' }, { label: prefill?.label ?? 'Valeurs d’exemple' }]}
+      steps={
+        <InvestSteps current={3} navigate={navigate}
+          hint={<NavLink href="/property" navigate={navigate}>← Étape précédente : analyser un bien</NavLink>} />
+      }
       filters={<FilterBar filters={filters} onFilters={onFilters} show={['type', 'size']} />}>
-      <div className="cy-grid">
+      <div className="cy-grid cy-sim-grid">
         <Panel span={4} title="Hypothèses" flush>
           <div className="cy-sim-form">
             {prefill?.note && <div className="cy-note">{prefill.note}</div>}
-            <label className="cy-check"><input type="checkbox" checked={isNew} onChange={(e) => setIsNew(e.target.checked)} /> Neuf (frais de notaire réduits)</label>
+            <div className="cy-rows">
+              <FieldRow label="Bien neuf (VEFA)" hint="frais de notaire réduits">
+                <input type="checkbox" aria-label="Bien neuf (VEFA), frais de notaire réduits" checked={isNew} onChange={(e) => setIsNew(e.target.checked)} />
+              </FieldRow>
+            </div>
             {FIELDS.map((group) => (
-              <fieldset key={group.title}>
+              <fieldset key={group.title} className="cy-rows">
                 <legend>{group.title}</legend>
                 {group.fields.map((f) => (
-                  <label key={f.key}>
-                    <span>{f.label} {f.info && <InfoTip k={f.info} />}</span>
-                    <span className="cy-unit">
-                      <input className="cy-input num" inputMode="decimal" aria-label={f.label} value={form[f.key]}
-                        onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
-                      <span className="ink-3">{f.unit}</span>
-                    </span>
-                  </label>
+                  <FieldRow key={f.key} label={f.label} info={f.info} unit={f.unit}>
+                    <input className="cy-input num" inputMode="decimal" aria-label={f.unit ? `${f.label} (${f.unit})` : f.label} value={form[f.key]}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
+                  </FieldRow>
                 ))}
               </fieldset>
             ))}
@@ -214,7 +221,7 @@ export default function SimulatorScreen({ filters, params, onFilters, onParams, 
                 </tbody></table>
               </Panel>
               <Panel span={12} title="Sensibilité : cash-flow mensuel selon le taux et le prix" flush>
-                <div className="cy-table-wrap">
+                <TableWrap>
                   <table className="cy-table">
                     <thead><tr><th>Taux \ prix</th>{grid[0].cells.map((c) => <th key={c.priceChange} className="num">{formatSignedPercent(c.priceChange)}</th>)}</tr></thead>
                     <tbody>
@@ -230,7 +237,7 @@ export default function SimulatorScreen({ filters, params, onFilters, onParams, 
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableWrap>
               </Panel>
             </>
           )}
@@ -264,15 +271,13 @@ export default function SimulatorScreen({ filters, params, onFilters, onParams, 
               <Panel span={12} title={`Sur ${horizon} ans, revente comprise (${REGIMES[best.regime]})`} tools={
                 <Segmented label="Horizon" options={[10, 15, 20, 25].map((y) => ({ value: String(y), label: `${y} ans` }))} value={String(horizon)} onChange={(v) => setHorizon(Number(v))} />
               }>
-                <div className="cy-filters" style={{ border: 0, padding: 0, marginBottom: 8 }}>
-                  {([['price', 'Prix / an (%)', prefill?.trend ? `tendance ${formatSignedPercent(prefill.trend.cagr)} depuis ${prefill.trend.since}` : '+1 % par défaut'],
-                    ['rent', 'Loyers et charges / an (%)', ''], ['selling', 'Frais de vente (%)', '']] as const).map(([k, label, hint]) => (
-                    <label key={k} className="cy-filter">
-                      <span className="cy-filter-label">{label}</span>
-                      <input className="cy-input num" style={{ width: 90 }} placeholder={k === 'price' ? formatDecimal(priceGrowth * 100) : ''} value={growth[k]}
-                        onChange={(e) => setGrowth({ ...growth, [k]: e.target.value })} aria-label={label} />
-                      {hint && <span className="ink-3" style={{ fontSize: 'var(--fs-micro)' }}>{hint}</span>}
-                    </label>
+                <div className="cy-rows narrow" style={{ marginBottom: 8 }}>
+                  {([['price', 'Évolution du prix', '% / an', prefill?.trend ? `tendance ${formatSignedPercent(prefill.trend.cagr)} depuis ${prefill.trend.since}` : '+1 % par défaut'],
+                    ['rent', 'Évolution des loyers et charges', '% / an', ''], ['selling', 'Frais de vente', '%', '']] as const).map(([k, label, unit, hint]) => (
+                    <FieldRow key={k} label={label} unit={unit} hint={hint || undefined}>
+                      <input className="cy-input num" inputMode="decimal" aria-label={`${label} (${unit})`} placeholder={k === 'price' ? formatDecimal(priceGrowth * 100) : ''} value={growth[k]}
+                        onChange={(e) => setGrowth({ ...growth, [k]: e.target.value })} />
+                    </FieldRow>
                   ))}
                 </div>
                 <table className="cy-table"><tbody>
@@ -324,11 +329,12 @@ export default function SimulatorScreen({ filters, params, onFilters, onParams, 
 
           {tab === 'brrrr' && (
             <Panel span={12} title="BRRRR : acheter, rénover, louer, refinancer">
-              <label className="cy-filter" style={{ marginBottom: 8 }}>
-                <span className="cy-filter-label">Valeur après travaux</span>
-                <span className="cy-unit"><input className="cy-input num" aria-label="Valeur après travaux" value={growth.arv} placeholder={prefill?.market ? String(Math.round(prefill.market.p75PriceM2 * input.surfaceM2)) : ''}
-                  onChange={(e) => setGrowth({ ...growth, arv: e.target.value })} /><span className="ink-3">€</span></span>
-              </label>
+              <div className="cy-rows narrow" style={{ marginBottom: 8 }}>
+                <FieldRow label="Valeur après travaux" unit="€">
+                  <input className="cy-input num" inputMode="decimal" aria-label="Valeur après travaux (€)" value={growth.arv} placeholder={prefill?.market ? String(Math.round(prefill.market.p75PriceM2 * input.surfaceM2)) : ''}
+                    onChange={(e) => setGrowth({ ...growth, arv: e.target.value })} />
+                </FieldRow>
+              </div>
               {!refi ? (
                 <div className="cy-note">Saisissez la valeur du bien une fois rénové (repère : P75 de la commune × surface{prefill?.market ? ` ≈ ${formatEuros(prefill.market.p75PriceM2 * input.surfaceM2)}` : ''}).</div>
               ) : (
@@ -343,7 +349,8 @@ export default function SimulatorScreen({ filters, params, onFilters, onParams, 
           <Panel span={12} title="Et ensuite">
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <NavLink className="cy-button ghost" href={`/place/${filters.level}/${filters.code}?type=${type}&size=${filters.size}`} navigate={navigate}>Voir le marché</NavLink>
-              <NavLink className="cy-button ghost" href="/property" navigate={navigate}>Analyser une annonce</NavLink>
+              <NavLink className="cy-button ghost" href="/property" navigate={navigate}>← Analyser une annonce</NavLink>
+              <NavLink className="cy-button ghost" href="/investir" navigate={navigate}>Trouver une autre ville</NavLink>
             </div>
           </Panel>
         </div>

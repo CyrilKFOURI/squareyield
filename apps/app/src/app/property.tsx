@@ -8,7 +8,7 @@ export default function PropertyRoute() {
   return (
     <>
       <Head>
-        <title>Analyser un bien · Cyfouri</title>
+        <title>Analyser un bien · SquareYield</title>
         <meta name="robots" content="noindex" />
       </Head>
       <PropertyScreen {...screen} dom={{ style: { flex: 1 } }} />

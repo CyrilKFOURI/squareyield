@@ -56,6 +56,22 @@ def test_series_split_by_level_and_type(serve):
     assert _load(serve, "series/departement_house.json")["rows"] == []
 
 
+def test_commune_series_yearly_existing_all_sizes_above_min_sales(serve):
+    doc = _load(serve, "series/communes/49.json")
+    assert doc["departement"] == "49" and doc["fields"] == ["code", "type", "period", "n", "median"]
+    rows = _rows(doc)
+    angers = [(r["type"], r["period"], r["median"]) for r in rows if r["code"] == "49007"]
+    # complete years only (2026 is one half), existing homes, all sizes; new builds and the mixed type left out
+    assert angers == [("apartment", "2024", 3000), ("apartment", "2025", 3100), ("house", "2025", 2500)]
+    assert {r["code"] for r in rows} == {"49007", "49015", "49020"} and all(r["n"] >= 10 for r in rows)
+
+
+def test_commune_series_carries_arrondissements_and_drops_small_cells(serve):
+    rows = _rows(_load(serve, "series/communes/75.json"))
+    # Paris as a whole has 9 sales here (under min_sales): left out; its arrondissement is published
+    assert [(r["code"], r["n"]) for r in rows] == [("75101", 300)]
+
+
 def test_explorer_rows_per_type_and_size_with_typical_deal(serve):
     rows = _rows(_load(serve, "explorer/communes/49.json"))
     angers = {(r["type"], r["size"]): r for r in rows if r["code"] == "49007"}

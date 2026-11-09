@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Cyfouri",
-    "slug": "cyfouri",
+    "name": "SquareYield",
+    "slug": "squareyield",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "cyfouri",
+    "scheme": "squareyield",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
       "supportsTablet": true,
-      "bundleIdentifier": "fr.cyfouri.app"
+      "bundleIdentifier": "fr.cyfouri.squareyield"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +20,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "fr.cyfouri.app"
+      "package": "fr.cyfouri.squareyield"
     },
     "web": {
       "output": "single",

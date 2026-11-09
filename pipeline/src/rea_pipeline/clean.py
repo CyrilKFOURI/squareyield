@@ -25,29 +25,38 @@ def _decimal(column: str) -> str:
     return f"TRY_CAST(replace(\"{column}\", ',', '.') AS DOUBLE)"
 
 
+# Shared with sales.py (data/local), so both files give a sale the same id and the same parcel.
+# No id in the official files: every row of a sale shares these fields.
+MUTATION_ID = ("md5(concat_ws('|', \"Date mutation\", \"Nature mutation\", \"Valeur fonciere\", "
+               "\"Code departement\", \"Code commune\", \"No disposition\"))")
+COMMUNE = '"Code departement" || lpad("Code commune", CAST(5 - length("Code departement") AS INTEGER), \'0\')'
+PARCEL = (f"{COMMUNE} || lpad(coalesce(\"Prefixe de section\", ''), 3, '0') "
+          "|| lpad(\"Section\", 2, '0') || lpad(\"No plan\", 4, '0')")
+
+
+def read_official(files: list[Path]) -> str:
+    """DuckDB table function reading official DVF files as text."""
+    file_list = ", ".join(f"'{f.as_posix()}'" for f in files)
+    return (f"read_csv([{file_list}], header = true, all_varchar = true, union_by_name = true, "
+            "delim = '|', quote = '')")
+
+
 def load_raw(con: duckdb.DuckDBPyConnection, files: list[Path]) -> None:
     """Load official DVF files (data.gouv.fr 'ValeursFoncieres-*.txt') into table dvf_raw.
 
     The official format has no mutation id, unpadded commune codes, French decimals
     ("130000,00") and dd/mm/yyyy dates; this normalises them.
     """
-    file_list = ", ".join(f"'{f.as_posix()}'" for f in files)
-    commune = (
-        '"Code departement" || lpad("Code commune", CAST(5 - length("Code departement") AS INTEGER), \'0\')'
-    )
     con.execute(
         f"""
         CREATE OR REPLACE TABLE dvf_raw AS
         SELECT
-            -- no id in the official files: every row of a sale shares these fields
-            md5(concat_ws('|', "Date mutation", "Nature mutation", "Valeur fonciere",
-                          "Code departement", "Code commune", "No disposition")) AS id_mutation,
+            {MUTATION_ID} AS id_mutation,
             TRY_CAST(strptime("Date mutation", '%d/%m/%Y') AS DATE) AS date_mutation,
             "Nature mutation" AS nature_mutation,
             {_decimal("Valeur fonciere")} AS valeur_fonciere,
-            {commune} AS code_commune,
-            {commune} || lpad(coalesce("Prefixe de section", ''), 3, '0')
-                || lpad("Section", 2, '0') || lpad("No plan", 4, '0') AS id_parcelle,
+            {COMMUNE} AS code_commune,
+            {PARCEL} AS id_parcelle,
             "1er lot" AS lot_1,
             "Type local" AS type_local,
             {_decimal("Surface reelle bati")} AS surface_reelle_bati,
@@ -56,8 +65,7 @@ def load_raw(con: duckdb.DuckDBPyConnection, files: list[Path]) -> None:
             TRY_CAST("Nombre de lots" AS INTEGER) AS nombre_lots,
             "Nature culture" AS nature_culture,
             {_decimal("Surface terrain")} AS surface_terrain
-        FROM read_csv([{file_list}], header = true, all_varchar = true, union_by_name = true,
-                      delim = '|', quote = '')
+        FROM {read_official(files)}
         """
     )
 

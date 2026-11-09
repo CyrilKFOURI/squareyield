@@ -8,7 +8,7 @@ export default function HomeRoute() {
   return (
     <>
       <Head>
-        <title>Cyfouri · investissement locatif</title>
+        <title>SquareYield · investissement locatif</title>
         <meta name="robots" content="noindex" />
       </Head>
       <HomeScreen {...screen} dom={{ style: { flex: 1 } }} />

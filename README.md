@@ -1,7 +1,8 @@
-# Cyfouri
+# SquareYield
 
-Analyse de l'investissement locatif en France, commune par commune, à partir des données publiques
-(ventes signées DVF, loyers ANIL, INSEE, DPE). Un pipeline hors ligne précalcule tous les indicateurs ;
+**SquareYield est une app d'analyse de l'investissement locatif en France** : prix, loyers et rendement au m²,
+commune par commune, à partir des données publiques (ventes signées DVF, loyers ANIL, INSEE, DPE).
+Une app CYFOURI. Un pipeline hors ligne précalcule tous les indicateurs ;
 l'application web et mobile ne fait que les lire.
 
 - **Carte** : départements et communes du vert (bon marché) au rouge (cher), points par commune et par
@@ -15,7 +16,7 @@ l'application web et mobile ne fait que les lire.
   comparables, loyer à sa surface, cash-flow, risques. L'extension navigateur pré-remplit le formulaire.
 - **Simulateur** : crédit, fiscalité (micro-foncier, réel, LMNP), revente et TRI, BRRRR, sensibilité.
 
-**Site : https://cyrilkfouri.github.io/real-estate-analytics-fr/**
+**Site : https://squareyield.vercel.app**
 
 Tout compare des biens comparables : même type, même taille, ancien ou neuf, même période.
 

@@ -24,6 +24,7 @@ const ANIL = 'ANIL, carte des loyers — loyers d’annonce non meublés, charge
 const INSEE = 'INSEE, recensement et Filosofi';
 const MARKET: Segmentation[] = ['type', 'size', 'condition', 'period', 'area'];
 const RENT: Segmentation[] = ['type', 'size', 'period', 'area'];
+const SALES = 'DVF (DGFiP) — ventes une par une, sans numéro de lot';
 const DEAL = 'Calcul sur vos hypothèses (simulateur) ; bien type : prix et surface médians, financement par défaut';
 
 export const KPI_CATALOGUE: KpiEntry[] = [
@@ -168,6 +169,59 @@ export const KPI_CATALOGUE: KpiEntry[] = [
   { id: 'X5', keys: ['reliability'], label: 'Fiabilité', unit: '',
     definition: 'Faible sous 30 ventes, non publié sous 10.', howToRead: '', source: DVF, segments: MARKET,
     higherIsBetter: null },
+  // 017 level pages: ratios over published aggregates
+  { id: 'L1', keys: ['france_index'], label: 'Indice France = 100', unit: 'indice',
+    definition: 'Prix médian au m² du lieu divisé par celui de la France (même type, même année), × 100.',
+    howToRead: '150 : 50 % plus cher que la moyenne française ; 80 : 20 % moins cher.', source: DVF,
+    segments: MARKET, higherIsBetter: false },
+  { id: 'L2', keys: ['growth_5y'], label: 'Évolution sur la période', unit: '%',
+    definition: 'Prix médian de la dernière année complète comparé à la première année complète de la fenêtre DVF.',
+    howToRead: 'Hausse cumulée, pas par an. Les années à un seul semestre sont exclues.', source: DVF,
+    segments: MARKET, higherIsBetter: null },
+  { id: 'L3', keys: ['yearly_change'], label: 'Variation annuelle', unit: '%',
+    definition: 'Prix médian d’une année complète comparé à l’année précédente.',
+    howToRead: 'Vert : hausse, rouge : baisse. Une case vide : moins de 10 ventes cette année-là.', source: DVF,
+    segments: MARKET, higherIsBetter: null },
+  { id: 'L4', keys: ['m2_per_income'], label: 'm² pour un an de revenu', unit: 'm²',
+    definition: 'Niveau de vie médian annuel des habitants divisé par le prix médian au m².',
+    howToRead: 'Accessibilité : plus le chiffre est haut, plus il est facile d’acheter avec les revenus locaux.',
+    source: `${DVF} ; ${INSEE}`, segments: MARKET, higherIsBetter: true },
+  { id: 'L5', keys: ['rank'], label: 'Rang', unit: 'rang',
+    definition: 'Position parmi les lieux du même niveau, du plus cher au moins cher (même type).',
+    howToRead: '1 = le plus cher. Classement sur les lieux d’au moins 10 ventes.', source: DVF,
+    segments: MARKET, higherIsBetter: null },
+  // 019 sales map and sale sheets: individual sales, served by the local API only
+  { id: 'V1', keys: ['building_median_m2', 'building_sales'], label: 'Ventes d’un immeuble', unit: '€/m²',
+    definition: 'Ventes de la parcelle cadastrale (un point sur la carte) sur la période et les filtres choisis ; médiane et fourchette P25–P75 de leur prix au m².',
+    howToRead: 'Sous 3 ventes la médiane n’est pas affichée, seulement les ventes. Une parcelle peut porter plusieurs adresses.',
+    source: SALES, segments: ['type', 'size', 'period'], higherIsBetter: false },
+  { id: 'V2', keys: ['gap_commune'], label: 'Écart au marché de la commune', unit: '%',
+    definition: 'Prix au m² de la vente / médiane de la commune (même type, période choisie) − 1.',
+    howToRead: 'Positif : vendu plus cher que la moitié des ventes de la commune ; ne tient compte ni de la taille ni de l’état.',
+    source: SALES, segments: ['type', 'period'], higherIsBetter: false },
+  { id: 'V3', keys: ['similar_sales', 'sale_gap'], label: 'Ventes similaires et écart', unit: '%',
+    definition: 'Même type, surface à ±20 %, ±1 pièce, signées à ±6 mois de la vente (elle-même exclue), dans l’immeuble, la rue, la section cadastrale ou la commune. Écart = prix au m² de la vente / médiane des similaires − 1.',
+    howToRead: 'Sous 3 ventes similaires, ni médiane ni écart : « moins de 3 ventes similaires ».', source: SALES,
+    segments: [], higherIsBetter: false },
+  { id: 'V4', keys: ['sale_percentile'], label: 'Rang parmi les ventes similaires', unit: '%',
+    definition: 'Part des ventes similaires vendues moins cher au m² que cette vente.',
+    howToRead: '62 % : plus chère que 62 % des ventes comparables ; 50 % = au milieu du marché.', source: SALES,
+    segments: [], higherIsBetter: false },
+  { id: 'V5', keys: ['comparables'], label: 'Comparables', unit: 'ventes',
+    definition: 'Les 10 ventes similaires les plus proches dans la commune (distance, puis date), leur médiane et leur fourchette.',
+    howToRead: 'Les biens que l’acheteur aurait pu acheter au même moment.', source: SALES, segments: [], higherIsBetter: null },
+  { id: 'V6', keys: ['value_today'], label: 'Valeur aujourd’hui', unit: '€',
+    definition: 'Prix payé × (médiane annuelle au m² de la commune, même type, dernière année complète / celle de l’année de la vente). Le département quand la commune n’a pas de série.',
+    howToRead: 'Ce que vaudrait le bien s’il avait suivi son marché ; plus-value latente = valeur − prix, avant frais et impôts.',
+    source: SALES, segments: ['type'], higherIsBetter: null },
+  { id: 'V7', keys: ['resale_annual_rate', 'resale'], label: 'Revente : plus-value annuelle', unit: '% / an',
+    definition: 'Même lot de la même parcelle (appartements) ou même parcelle (maisons) revendu : (prix de revente / prix d’achat)^(1 / années de détention) − 1.',
+    howToRead: 'Avant frais de notaire, travaux et impôts : une revente rapide à +3 % / an peut être une perte réelle.',
+    source: SALES, segments: [], higherIsBetter: true },
+  { id: 'V8', keys: ['model_estimate'], label: 'Estimation du modèle', unit: '€/m²',
+    definition: 'Prix au m² estimé par le modèle de prix local pour ce bien (type, surface, pièces, section) et sa fourchette.',
+    howToRead: 'Écart = prix réel / estimation − 1. Le modèle ne voit ni l’étage ni l’état du bien.',
+    source: 'Modèle de prix Cyfouri (calculé dans le navigateur)', segments: [], higherIsBetter: null },
 ];
 
 const BY_KEY = new Map(KPI_CATALOGUE.flatMap((entry) => entry.keys.map((key) => [key, entry] as const)));

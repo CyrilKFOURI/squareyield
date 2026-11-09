@@ -5,7 +5,7 @@
 // the places on a map.
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { type CommunePoint, loadCommunePoints, loadPlace } from '../../data/api';
+import { loadPlace } from '../../data/api';
 import { catalogueEntry } from '../../data/catalogue';
 import { bestIndex } from '../../data/compare';
 import { alignPeriods, parsePlaces, seriesFor } from '../../data/evolution';
@@ -28,6 +28,7 @@ import { NavLink, Shell } from '../components/shell';
 import { MapCanvas } from '../maps/map-canvas';
 import { useDark } from '../hooks/use-dark';
 import type { ScreenProps } from '../screen-props';
+import { TableWrap } from '../components/table-wrap';
 
 const MAX = 4;
 
@@ -40,7 +41,6 @@ export default function CompareScreen({ filters, params, onFilters, onParams, na
   const type: DwellingType = filters.type === 'house' ? 'house' : 'apartment';
   const segment = { propertyType: type, rooms: filters.size };
   const [loaded, setLoaded] = useState<Record<string, Place | null>>({});
-  const [points, setPoints] = useState<CommunePoint[] | null>(null);
   const dark = useDark();
 
   useEffect(() => {
@@ -55,9 +55,6 @@ export default function CompareScreen({ filters, params, onFilters, onParams, na
       current = false;
     };
   }, [keys.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    loadCommunePoints().then((t) => setPoints(t.rows), () => undefined);
-  }, []);
 
   const places = keys.map((k) => loaded[k]).filter((p): p is Place => Boolean(p));
   // one colour per place in the URL list, whatever is still loading or failed
@@ -110,7 +107,7 @@ export default function CompareScreen({ filters, params, onFilters, onParams, na
   const curves = places.map((p) => ({ name: p.name ?? p.code, points: seriesFor(p.prices, { type, size: filters.size, condition: 'existing', periodType: 'half' }) }));
   const periods = alignPeriods(curves.map((c) => c.points.map((p) => p.period)));
   const pts = places
-    .map((p, i) => ({ p, i, pt: points?.find((x) => x.code === p.code && x.type === type) }))
+    .map((p, i) => ({ p, i, pt: p.point ? { lon: p.point[0], lat: p.point[1] } : undefined })) // each place file carries its point
     .filter((x) => x.pt);
   const mapPoints = pts.length
     ? { type: 'FeatureCollection' as const, features: pts.map(({ p, i, pt }) => ({
@@ -146,7 +143,7 @@ export default function CompareScreen({ filters, params, onFilters, onParams, na
         ) : (
           <>
             <Panel span={12} flush>
-              <div className="cy-table-wrap">
+              <TableWrap>
                 <table className="cy-table cy-compare">
                   <thead>
                     <tr>
@@ -177,7 +174,7 @@ export default function CompareScreen({ filters, params, onFilters, onParams, na
                     </tbody>
                   ))}
                 </table>
-              </div>
+              </TableWrap>
               <div className="cy-note" style={{ padding: '6px 14px' }}>Valeur soulignée : la plus favorable à l’investisseur sur la ligne (quand le sens est clair).</div>
             </Panel>
             <Panel span={8} title="Prix au m² par semestre" info="median_price_m2">
@@ -193,7 +190,7 @@ export default function CompareScreen({ filters, params, onFilters, onParams, na
             </Panel>
             <Panel span={4} title="Carte" flush>
               {mapPoints && bounds ? (
-                <div style={{ position: 'relative', height: 300 }}>
+                <div className="cy-map-box" style={{ position: 'relative', height: 300 }}>
                   <MapCanvas polygons={null} points={mapPoints as never} dark={dark} bounds={bounds} onHover={() => undefined}
                     onClick={(p) => navigate(`/place/${String(p.level)}/${String(p.code)}?type=${type}`)} style={{ position: 'absolute', inset: 0 }} />
                 </div>

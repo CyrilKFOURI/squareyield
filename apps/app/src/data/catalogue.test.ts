@@ -21,3 +21,9 @@ test('ids are unique and every entry explains itself', () => {
 test('every map metric has its catalogue entry', () => {
   for (const m of METRICS) assert.ok(catalogueEntry(m.base), m.base);
 });
+
+test('the sales map and sale sheet KPIs (019) have their entries', () => {
+  for (const key of ['building_median_m2', 'gap_commune', 'similar_sales', 'sale_percentile', 'comparables', 'value_today', 'resale_annual_rate', 'model_estimate']) {
+    assert.ok(catalogueEntry(key), key);
+  }
+});

@@ -1,7 +1,7 @@
 // Choropleth map data (docs/features/005-map/spec.md): GeoJSON layers written by the pipeline's
 // mapdata stage, metrics, quintile classes and colours.
 import { cached } from './cache.ts';
-import { DATA_URL } from './config.ts';
+import { DATA_URL, fetchRetry } from './config.ts';
 import { formatEurosPerM2, formatPercent, formatSignedPercent } from './format.ts';
 
 // a dev server or static host answers a missing file with the app page (HTML, status 200)
@@ -84,7 +84,7 @@ export const metricKey = (base: MetricBase, type: 'apartment' | 'house'): string
 export type Breaks = { departements: Record<string, number[]>; communes: Record<string, number[]> };
 
 const breaksCache = cached((path) =>
-  fetch(`${DATA_URL}/map/${path}`).then((response) => {
+  fetchRetry(`${DATA_URL}/map/${path}`).then((response) => {
     if (!response.ok || isHtml(response)) {
       throw new Error(`carte ${path} : HTTP ${response.ok ? 404 : response.status}`);
     }
@@ -95,7 +95,7 @@ const breaksCache = cached((path) =>
 export const loadBreaks = (): Promise<Breaks> => breaksCache('breaks.json');
 
 const fetchLayer = async (path: string): Promise<MapLayer> => {
-  const response = await fetch(`${DATA_URL}/map/${path}`);
+  const response = await fetchRetry(`${DATA_URL}/map/${path}`);
   if (!response.ok || isHtml(response)) {
     throw new Error(`carte ${path} : HTTP ${response.ok ? 404 : response.status}`);
   }

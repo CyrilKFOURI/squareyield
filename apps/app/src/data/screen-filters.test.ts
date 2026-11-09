@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { ExplorerRow } from './explorer.ts';
+import type { InvestRow } from './invest-view.ts';
 import { activeCount, applyScreenFilters, parseScreenFilters } from './screen-filters.ts';
 
-const row = (over: Partial<ExplorerRow>): ExplorerRow =>
-  ({ code: 'x', name: 'X', level: 'departement', parent: '52', type: 'apartment', size: 'all', n_sales: 100, reliability: 'ok',
+const row = (over: Partial<InvestRow>): InvestRow =>
+  ({ code: 'x', name: 'X', level: 'commune', departement: '44', region: '52', type: 'apartment', size: 'all', n_sales: 100, reliability: 'ok',
     median_price_m2: 2500, median_price: 140000, gross_yield: 0.06, cash_flow_monthly: 10, population: 50000,
-    vacancy_rate: 0.07, share_fg: 0.1, rent_control: false, flag_high_vacancy: false, flag_population_decline: false, ...over }) as ExplorerRow;
+    vacancy_rate: 0.07, share_fg: 0.1, rent_control: false, flag_high_vacancy: false, flag_population_decline: false, ...over }) as InvestRow;
 
 test('nothing in the URL: no filter, every row kept', () => {
   const f = parseScreenFilters({});
@@ -32,7 +32,7 @@ test('percent filters are typed in %', () => {
 
 test('ranges, rent control, risky places and région', () => {
   const rows = [row({ code: 'a' }), row({ code: 'b', median_price_m2: 5000, rent_control: true }),
-    row({ code: 'c', population: 2000, flag_population_decline: true }), row({ code: 'd', parent: '84' })];
+    row({ code: 'c', population: 2000, flag_population_decline: true }), row({ code: 'd', region: '84' })];
   assert.deepEqual(applyScreenFilters(rows, parseScreenFilters({ pmin: '2000', pmax: '3000' })).map((r) => r.code), ['a', 'c', 'd']);
   assert.deepEqual(applyScreenFilters(rows, parseScreenFilters({ rc: 'in' })).map((r) => r.code), ['b']);
   assert.deepEqual(applyScreenFilters(rows, parseScreenFilters({ rc: 'out' })).map((r) => r.code), ['a', 'c', 'd']);

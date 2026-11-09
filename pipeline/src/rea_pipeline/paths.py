@@ -8,3 +8,4 @@ CLEAN = ROOT / "clean"
 MARTS = ROOT / "marts"
 SERVE = ROOT / "serve"
 RUNS = ROOT / "runs"
+LOCAL = ROOT / "local"  # individual sales for the local API only, never published

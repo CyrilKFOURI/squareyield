@@ -5,7 +5,7 @@
 // comparable sales and the commune's section prices on a map), market cell, ANIL rent at the property's own
 // surface and OLL, money (short simulation) and risks. The estimate comes from the local API; when it is
 // down, every panel that only needs the published files still renders from the chosen commune.
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 
 import { assessRisk, cashFlowVerdict, type EnergyClass, type PriceVerdict, RENTAL_BAN_YEAR, summary } from '../../core-kpi/assessment';
 import { analyzeDeal } from '../../core-kpi/deal';
@@ -14,6 +14,7 @@ import { DEFAULTS, FR_RULES } from '../../core-kpi/rules';
 import { chargesProvisionM2 } from '../../core-kpi/typical-deal';
 import { loadOll, loadPlace, loadSectionPoints, type SectionPoint } from '../../data/api';
 import { EFFECT_LABELS, type Estimate, requestEstimate } from '../../data/estimate';
+import { missingForAnalysis, parseAmount } from '../../data/property-form';
 import {
   formatCount,
   formatDecimal,
@@ -28,11 +29,12 @@ import { colorFor } from '../../data/scales';
 import { latestCell, roomsBucketOf, yieldFor } from '../../data/select';
 import type { GeoLevel, Oll, Place } from '../../data/types';
 import { axisStyle, Chart, css } from '../charts/chart';
-import { FilterField, Segmented, sizeLabel } from '../components/controls';
+import { Segmented, sizeLabel } from '../components/controls';
 import { DataTable } from '../components/data-table';
 import { EmptyState, Panel, Ribbon } from '../components/panel';
 import { PlaceSearch } from '../components/place-search';
 import { NavLink, Shell } from '../components/shell';
+import { InvestSteps } from '../components/steps';
 import { MapCanvas } from '../maps/map-canvas';
 import { useDark } from '../hooks/use-dark';
 import type { ScreenProps } from '../screen-props';
@@ -53,10 +55,7 @@ type Form = {
   commune: { level: GeoLevel; code: string; name: string } | null;
 };
 
-const num = (text: string) => {
-  const value = Number.parseFloat(text.replace(/\s/g, '').replace(',', '.'));
-  return Number.isFinite(value) ? value : 0;
-};
+const num = parseAmount;
 
 // Paris, Lyon and Marseille: the address resolves to an arrondissement code.
 const levelOf = (code: string): GeoLevel => (/^(751|6938|132[01])/.test(code) ? 'arrondissement' : 'commune');
@@ -74,13 +73,21 @@ const formFrom = (params: Record<string, string>): Form => ({
   commune: params.commune ? { level: levelOf(params.commune), code: params.commune, name: params.commune } : null,
 });
 
+/** One cell of the form grid: label on top, a 28 px control row under it, so every row aligns (020). */
+const FormField = ({ label, size, children }: { label: string; size?: 'wide' | 'seg'; children: ReactNode }) => (
+  <div className={size ? `cy-form-field ${size}` : 'cy-form-field'}>
+    <span className="cy-form-label">{label}</span>
+    <div className="cy-form-control">{children}</div>
+  </div>
+);
+
 const NumberInput = ({ label, unit, value, onChange }: { label: string; unit?: string; value: string; onChange: (v: string) => void }) => (
-  <FilterField label={label}>
-    <span className="cy-unit">
-      <input className="cy-input num" inputMode="decimal" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
-      {unit && <span className="ink-3">{unit}</span>}
+  <FormField label={label}>
+    <span className="cy-form-num">
+      <input className="cy-input num" inputMode="decimal" aria-label={unit ? `${label} (${unit})` : label} value={value} onChange={(e) => onChange(e.target.value)} />
+      <span className="ink-3">{unit}</span>
     </span>
-  </FilterField>
+  </FormField>
 );
 
 export default function PropertyScreen({ params, navigate }: ScreenProps) {
@@ -147,55 +154,80 @@ export default function PropertyScreen({ params, navigate }: ScreenProps) {
     );
   };
 
+  const missing = missingForAnalysis({ address: form.address, hasCommune: Boolean(form.commune), surface: form.surface, price: form.price });
   const formPanel = (
     <Panel span={12} title="Le bien" tools={params.price ? <span className="cy-tag">pré-rempli depuis l’annonce</span> : undefined}>
-      <div className="cy-filters" style={{ border: 0, padding: 0 }}>
-        <FilterField label="Adresse (pour l’estimation)">
-          <input className="cy-input" style={{ width: 260 }} aria-label="Adresse du bien" placeholder="12 rue Lenepveu, Angers" value={form.address}
+      <form className="cy-form" onSubmit={(e) => {
+        e.preventDefault();
+        if (missing.length === 0) {
+          analyze();
+        }
+      }}>
+        <FormField label="Adresse (pour l’estimation)" size="wide">
+          <input className="cy-input" aria-label="Adresse du bien" placeholder="12 rue Lenepveu, Angers" value={form.address}
             onChange={(e) => set('address')(e.target.value)} />
-        </FilterField>
-        <FilterField label="Commune (marché, loyers)">
+        </FormField>
+        <FormField label="Commune (marché, loyers)" size="wide">
           {form.commune ? (
             <span className="cy-chip">{market?.code === form.commune.code ? market.name : form.commune.name}<button type="button" aria-label="Changer de commune" onClick={() => set('commune')(null)}>×</button></span>
           ) : (
-            <PlaceSearch placeholder="Commune…" onPick={(p) => (p.level === 'commune' || p.level === 'arrondissement') && set('commune')({ level: p.level, code: p.code, name: p.name })} />
+            <PlaceSearch communesOnly placeholder="Commune…" onPick={(p) => (p.level === 'commune' || p.level === 'arrondissement') && set('commune')({ level: p.level, code: p.code, name: p.name })} />
           )}
-        </FilterField>
-        <FilterField label="Type">
+        </FormField>
+        <FormField label="Type" size="seg">
           <Segmented label="Type" options={[{ value: 'apartment', label: 'Appartement' }, { value: 'house', label: 'Maison' }]} value={form.type} onChange={set('type')} />
-        </FilterField>
-        <FilterField label="État">
+        </FormField>
+        <FormField label="État" size="seg">
           <Segmented label="Ancien ou neuf" options={[{ value: 'old', label: 'Ancien' }, { value: 'new', label: 'Neuf (VEFA)' }]} value={form.isNew ? 'new' : 'old'}
             onChange={(v) => set('isNew')(v === 'new')} />
-        </FilterField>
+        </FormField>
+        <FormField label="DPE (si connu)" size="seg">
+          <Segmented label="Classe énergie" options={[{ value: '', label: '?' }, ...ENERGY.map((e) => ({ value: e, label: e }))]} value={form.energy ?? ''}
+            onChange={(v) => set('energy')((v || null) as EnergyClass | null)} />
+        </FormField>
         <NumberInput label="Prix demandé" unit="€" value={form.price} onChange={set('price')} />
         <NumberInput label="Surface" unit="m²" value={form.surface} onChange={set('surface')} />
         <NumberInput label="Pièces" value={form.rooms} onChange={set('rooms')} />
         {form.type === 'house' && <NumberInput label="Terrain" unit="m²" value={form.land} onChange={set('land')} />}
         <NumberInput label="Parking / cave" value={form.dependencies} onChange={set('dependencies')} />
-        <FilterField label="DPE (si connu)">
-          <Segmented label="Classe énergie" options={[{ value: '', label: '?' }, ...ENERGY.map((e) => ({ value: e, label: e }))]} value={form.energy ?? ''}
-            onChange={(v) => set('energy')((v || null) as EnergyClass | null)} />
-        </FilterField>
-        <FilterField label=" ">
-          <button type="button" className="cy-button" onClick={analyze} disabled={(!form.address && !form.commune) || !(num(form.surface) > 0) || !(num(form.price) > 0)}>
+        <div className="cy-form-actions">
+          <button type="submit" className="cy-button" disabled={missing.length > 0 || estimate.loading}>
             {estimate.loading ? 'Analyse…' : 'Analyser'}
           </button>
-        </FilterField>
-      </div>
+          <span className="cy-note">
+            {missing.length > 0 ? `À compléter : ${missing.join(', ')}.` : 'Prix et marché, loyer, rentabilité et risques du bien.'}
+          </span>
+        </div>
+      </form>
     </Panel>
   );
 
   return (
-    <Shell active="property" title="Analyser un bien" navigate={navigate} crumbs={[{ label: 'Annonce → marché' }]}>
+    <Shell
+      active="invest"
+      title="Analyser un bien"
+      navigate={navigate}
+      crumbs={[{ label: 'Investir', href: '/investir' }, { label: 'Annonce → marché' }]}
+      steps={
+        <InvestSteps
+          current={2}
+          navigate={navigate}
+          hint={
+            <>
+              <NavLink href="/investir" navigate={navigate}>← Étape précédente</NavLink> ·{' '}
+              <NavLink href="/simulator" navigate={navigate}>Étape suivante →</NavLink>
+            </>
+          }
+        />
+      }>
       <div className="cy-grid">
         {formPanel}
         {!submitted ? (
           <Panel span={12} title="Comment ça marche">
             <div className="cy-note">
-              Saisissez l’adresse et la commune, le prix et la surface, puis « Analyser ». L’estimation de prix vient du serveur
-              local (<code>cd ml &amp;&amp; uv run rea-ml serve</code>) ; le marché, les loyers et le calcul de rentabilité viennent
-              des données publiées et s’affichent même sans lui. L’extension navigateur pré-remplit ce formulaire depuis une annonce.
+              Saisissez l’adresse et la commune, le prix et la surface, puis « Analyser ». L’estimation de prix est calculée dans
+              votre navigateur (modèle compact, adresse localisée par la Base Adresse Nationale) ; le marché, les loyers et le
+              calcul de rentabilité viennent des données publiées. L’extension navigateur pré-remplit ce formulaire depuis une annonce.
             </div>
           </Panel>
         ) : (
@@ -397,7 +429,7 @@ const Analysis = ({
       </Panel>
       <Panel span={7} title={`Ventes comparables${est ? ` · ${est.comparables.length}` : ''}`} flush>
         {!est || est.comparables.length === 0 ? (
-          <EmptyState>{est ? 'Aucune vente comparable (même type, surface ±25 %) sur 24 mois.' : 'Les ventes comparables viennent du serveur local.'}</EmptyState>
+          <EmptyState>{est ? 'Aucune vente comparable (même type, surface ±25 %) sur 24 mois.' : 'Les ventes comparables apparaissent après l’analyse.'}</EmptyState>
         ) : (
           <DataTable
             rows={est.comparables}
@@ -417,12 +449,12 @@ const Analysis = ({
           />
         )}
         <div className="cy-note" style={{ padding: '6px 14px' }}>
-          Vert : vendu plus cher au m² que le prix demandé. Ventes individuelles visibles ici seulement (serveur local), jamais publiées.
+          Vert : vendu plus cher au m² que le prix demandé. Source : DVF, ventes de la commune.
         </div>
       </Panel>
       <Panel span={5} title="Prix des quartiers de la commune" flush>
         {bounds ? (
-          <div style={{ position: 'relative', height: 300 }}>
+          <div className="cy-map-box" style={{ position: 'relative', height: 300 }}>
             <MapCanvas polygons={null} points={{ type: 'FeatureCollection', features: sectionFeatures as never }} dark={dark} bounds={bounds}
               onHover={() => undefined} onClick={() => undefined} style={{ position: 'absolute', inset: 0 }} />
           </div>

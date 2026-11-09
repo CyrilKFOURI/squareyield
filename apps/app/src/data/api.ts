@@ -1,5 +1,5 @@
 import { cached } from './cache.ts';
-import { DATA_URL } from './config.ts';
+import { DATA_URL, fetchRetry } from './config.ts';
 import { checkSchema } from './select.ts';
 import type {
   DwellingType,
@@ -29,7 +29,7 @@ const toObjects = <T>(fields: string[], rows: unknown[][]): T[] =>
   rows.map((row) => Object.fromEntries(fields.map((field, i) => [field, row[i]])) as T);
 
 const fetchJson = async <T>(path: string): Promise<T> => {
-  const response = await fetch(`${DATA_URL}/${path}`);
+  const response = await fetchRetry(`${DATA_URL}/${path}`);
   // a dev server or static host answers a missing file with the app page (HTML, status 200)
   const missing = response.ok && (response.headers.get('content-type') ?? '').includes('text/html');
   if (!response.ok || missing) {
@@ -43,7 +43,7 @@ const indexCache = cached((path) => fetchJson<RawIndex>(path).then((raw) => toOb
 export const loadIndex = (): Promise<IndexPlace[]> => indexCache('index.json');
 
 export const loadPlace = async (level: GeoLevel, code: string): Promise<Place> => {
-  const raw = await fetchJson<RawPlace>(`geo/${level}/${code}.json`);
+  const raw = await fetchJson<RawPlace>(`geo/${level}/${code.slice(0, 2)}/${code}.json`);
   if (!checkSchema(raw)) {
     throw new Error('Données en cours de mise à jour : rechargez la page dans quelques minutes.');
   }
@@ -127,10 +127,84 @@ export type SeriesRow = {
   p75: number;
 };
 
-export const loadCommunePoints = () => loadTable<CommunePoint>('points/communes.json');
+export const loadCommunePoints = () =>loadTable<CommunePoint>('points/communes.json');
 export const loadSectionPoints = (dep: string) => loadTable<SectionPoint>(`points/sections/${dep}.json`);
 export const loadPointBreaks = (): Promise<Record<string, number[]>> => fetchJson('points/breaks.json');
 export const loadSeries = (level: 'france' | 'region' | 'departement', type: PropertyTypeKey) =>
   loadTable<SeriesRow>(`series/${level}_${type}.json`);
 
 type PropertyTypeKey = DwellingType | 'all';
+
+// ---- level pages (docs/features/018-speed-and-map/spec.md): one ready file per page, nothing recomputed here
+
+/** Figures of one place on a level page; yearly arrays align on the file's `years`. */
+export type LevelPlace = {
+  code: string;
+  name: string;
+  level: GeoLevel;
+  n: number;
+  reliability: 'ok' | 'low';
+  price: number | null;
+  p25: number | null;
+  p75: number | null;
+  yoy: number | null;
+  rent: number | null;
+  yield: number | null;
+  net_yield: number | null;
+  cash_flow: number | null;
+  score: number | null;
+  /** Price index, France = 100. */
+  index: number | null;
+  /** m² one year of median living standard buys. */
+  m2_income: number | null;
+  medians: (number | null)[];
+  changes: (number | null)[];
+  growth: number | null;
+};
+
+export type FranceFigures = {
+  price: number | null;
+  p25: number | null;
+  p75: number | null;
+  yoy: number | null;
+  n: number | null;
+  rent: number | null;
+  yield: number | null;
+  medians: (number | null)[];
+  changes: (number | null)[];
+  growth: number | null;
+};
+
+export type FranceLevel = {
+  period: string | null;
+  years: string[];
+  types: Record<
+    DwellingType,
+    {
+      france: FranceFigures;
+      rows: (LevelPlace & { region: string | null })[];
+      curve: { periods: string[]; median: number[]; p25: number[]; p75: number[] };
+    }
+  >;
+};
+
+export type DepartementLevel = {
+  code: string;
+  name: string;
+  period: string | null;
+  years: string[];
+  region: { code: string | null; name: string | null };
+  types: Record<
+    DwellingType,
+    {
+      /** Null when the département has no published cell for this type. */
+      kpis: (LevelPlace & { region: string | null; rank: number; ranked: number }) | null;
+      curves: { departement: (number | null)[]; region: (number | null)[]; france: (number | null)[] };
+      communes: LevelPlace[];
+    }
+  >;
+};
+
+const levelCache = cached((path) => fetchJson<unknown>(path));
+export const loadFranceLevel = () => levelCache('levels/france.json') as Promise<FranceLevel>;
+export const loadDepartementLevel = (dep: string) => levelCache(`levels/departements/${dep}.json`) as Promise<DepartementLevel>;

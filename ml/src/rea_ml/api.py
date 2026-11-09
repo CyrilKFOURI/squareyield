@@ -5,6 +5,10 @@
 POST /estimate  {"address": "12 rue Lenepveu Angers", "property_type": "apartment",
                  "surface_m2": 45, "rooms": 2, "asked_price": 150000}
 GET  /health
+GET  /sales?commune=33063&type=&months=&rooms=&surface_min=&surface_max=&price_min=&price_max=
+GET  /building/<parcel>?<same filters>
+GET  /sale/<id_mutation>?<same filters>
+     (docs/features/019-sales-map/spec.md, "Local API contract"; queries in sales.py)
 
 Standard library only (http.server). Comparables read the local cleaned DVF sales: they are
 individual sales, so this API is for local use; never expose it publicly or let pages built
@@ -22,7 +26,8 @@ import duckdb
 import numpy as np
 import pandas as pd
 
-from .config import MODEL_NAME, MODELS_DIR, SALES_PATH
+from . import sales
+from .config import LEVELS_DIR, LOCAL_SALES_PATH, MODEL_NAME, MODELS_DIR, SALES_PATH
 from .inference import PriceCheckModel
 
 log = logging.getLogger("rea_ml.api")
@@ -89,10 +94,29 @@ def comparables(prop: dict, section: str | None, sales_path: Path | None = None)
     return [dict(zip(keys, row)) for row in rows]
 
 
+MISSING_SALES = "Fichier des ventes absent : lancez `cd pipeline && uv run rea sales`"
+
+
 class Service:
-    def __init__(self, folder: Path):
+    def __init__(self, folder: Path, sales_path: Path | None = None, levels_dir: Path | None = None):
         self.folder = folder
         self.model = PriceCheckModel.load(folder)
+        sales_path = sales_path or LOCAL_SALES_PATH
+        self.sales = (sales.SalesStore(sales_path, levels_dir or LEVELS_DIR, self.model)
+                      if sales_path.exists() else None)
+
+    def get(self, path: str, query: dict[str, list[str]]) -> dict:
+        """GET /sales, /building/<parcel>, /sale/<id>; raises sales.BadRequest / sales.NotFound."""
+        if self.sales is None:
+            raise FileNotFoundError(MISSING_SALES)
+        filters = sales.Filters.parse(query)
+        if path == "/sales":
+            return self.sales.sales_map((query.get("commune") or [""])[-1], filters)
+        if path.startswith("/building/"):
+            return self.sales.building(path.removeprefix("/building/"), filters)
+        if path.startswith("/sale/"):
+            return self.sales.sale(path.removeprefix("/sale/"), filters)
+        raise sales.NotFound("not found")
 
     def estimate(self, payload: dict) -> dict:
         prop = dict(payload)
@@ -118,7 +142,7 @@ class Service:
 def make_handler(service: Service):
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, body: dict) -> None:
-            data = json.dumps(body, ensure_ascii=False, default=str).encode("utf-8")
+            data = sales.dumps(body).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")  # local dev app on another port
@@ -132,10 +156,22 @@ def make_handler(service: Service):
             self._send(204, {})
 
         def do_GET(self) -> None:
-            if self.path == "/health":
-                self._send(200, {"status": "ok", "model_version": service.folder.name})
-            else:
-                self._send(404, {"error": "not found"})
+            url = urllib.parse.urlsplit(self.path)
+            if url.path == "/health":
+                self._send(200, {"status": "ok", "model_version": service.folder.name,
+                                 "sales": service.sales is not None})
+                return
+            try:
+                self._send(200, service.get(url.path, urllib.parse.parse_qs(url.query, keep_blank_values=True)))
+            except sales.BadRequest as error:
+                self._send(400, {"error": str(error)})
+            except sales.NotFound as error:
+                self._send(404, {"error": str(error)})
+            except FileNotFoundError as error:
+                self._send(503, {"error": str(error)})
+            except Exception:  # noqa: BLE001 — never leak a traceback to the client
+                log.exception("GET %s failed", self.path)
+                self._send(500, {"error": "erreur interne"})
 
         def do_POST(self) -> None:
             if self.path != "/estimate":
@@ -156,5 +192,6 @@ def make_handler(service: Service):
 def serve(port: int = 8787, folder: Path | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
     service = Service(folder or latest_model_folder())
-    log.info("model %s loaded, listening on http://localhost:%d", service.folder.name, port)
+    log.info("model %s loaded, sales %s, listening on http://localhost:%d", service.folder.name,
+             "loaded" if service.sales else f"absent ({MISSING_SALES})", port)
     ThreadingHTTPServer(("127.0.0.1", port), make_handler(service)).serve_forever()

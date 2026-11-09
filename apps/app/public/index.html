@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <!-- phone (docs/features/023-phone/spec.md): content under the notch handled with safe-area insets, no app-wide
+         zoom (maps zoom with two fingers; inputs are 16 px so iOS does not zoom on focus) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#fbfaf7" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1916" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>%WEB_TITLE%</title>
+    <meta name="description" content="SquareYield est une app d'analyse de l'investissement locatif en France : prix, loyers et rendement au m², commune par commune, à partir des données publiques." />
+    <!-- home screen (docs/features/024-squareyield/spec.md): name and icon when the site is added to a phone -->
+    <link rel="apple-touch-icon" href="/brand/icon-180.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="SquareYield" />
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript> Activez JavaScript pour utiliser l’application. </noscript>
+    <div id="root"></div>
+  </body>
+</html>

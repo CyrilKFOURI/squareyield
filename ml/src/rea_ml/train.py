@@ -7,6 +7,7 @@
 The metrics published with the model are those of phase 1: they describe how the recipe
 does on sales it has never seen.
 """
+import gc
 import logging
 import time
 from dataclasses import asdict, dataclass, field
@@ -67,7 +68,12 @@ def evaluate_recipe(config: Config, sales: pd.DataFrame, socio: pd.DataFrame) ->
     x = {name: build_features(splits[name], encodings[name], socio) for name in splits}
     log.info("features built in %ss", elapsed())
 
-    groups, importances, selection, _ = select_groups(x["train"], y["train"], x["valid"], y["valid"], config.training)
+    if config.training.fixed_groups:
+        groups, importances = list(config.training.fixed_groups), []
+        selection = {"full": None, "reduced": None}
+    else:
+        groups, importances, selection, _ = select_groups(
+            x["train"], y["train"], x["valid"], y["valid"], config.training)
     columns = columns_of(groups)
     log.info("selected %d groups: %s (%ss)", len(groups), groups, elapsed())
     # the evaluated model learns from the whole training period with the selected groups
@@ -124,6 +130,7 @@ def train(config: Config) -> TrainingResult:
     evaluation = evaluate_recipe(config, sales, socio)
     report = evaluation["report"]
     log.info("test metrics: %s", report["test"])
+    gc.collect()  # phase 1 frames are gone: give their memory back before the final fit on every sale
 
     elapsed = _timer()
     index = TimeIndex.fit(sales)

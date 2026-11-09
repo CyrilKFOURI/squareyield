@@ -8,7 +8,7 @@ export default function CompareRoute() {
   return (
     <>
       <Head>
-        <title>Comparer · Cyfouri</title>
+        <title>Comparer · SquareYield</title>
         <meta name="robots" content="noindex" />
       </Head>
       <CompareScreen {...screen} dom={{ style: { flex: 1 } }} />

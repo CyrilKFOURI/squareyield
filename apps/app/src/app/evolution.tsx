@@ -8,7 +8,7 @@ export default function EvolutionRoute() {
   return (
     <>
       <Head>
-        <title>Évolution · Cyfouri</title>
+        <title>Évolution · SquareYield</title>
         <meta name="robots" content="noindex" />
       </Head>
       <EvolutionScreen {...screen} dom={{ style: { flex: 1 } }} />

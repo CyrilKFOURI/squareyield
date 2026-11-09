@@ -1,17 +1,7 @@
-import Head from 'expo-router/head';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 
-import { useScreen } from '@/hooks/use-screen';
-import ExplorerScreen from '@/web/screens/explorer-screen';
-
+// Explorer became Investir ① "Trouver une ville" (017): old links keep their filters.
 export default function ExplorerRoute() {
-  const screen = useScreen();
-  return (
-    <>
-      <Head>
-        <title>Explorer · Cyfouri</title>
-        <meta name="robots" content="noindex" />
-      </Head>
-      <ExplorerScreen {...screen} dom={{ style: { flex: 1 } }} />
-    </>
-  );
+  const params = useLocalSearchParams<Record<string, string>>();
+  return <Redirect href={{ pathname: '/investir', params }} />;
 }

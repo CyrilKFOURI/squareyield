@@ -1,74 +1,87 @@
-// Explorer screen filters (spec 015): one docked strip of small inputs, values kept in the URL. Inputs commit
-// on blur or Enter so typing does not rewrite the URL on every key.
+// Investir ① screen filters (spec 015), shown as the "Plus de filtres" group of the sidebar filter column (spec 020):
+// one control per row, ranges as two small inputs side by side, values kept in the URL. Inputs commit on blur or
+// Enter so typing does not rewrite the URL on every key.
 import { type KeyboardEvent, useState } from 'react';
 
 import { SCREEN_FILTER_KEYS } from '../../data/screen-filters';
 import { FilterField, Segmented, Select } from './controls';
-import { Panel } from './panel';
 
 type Props = {
   params: Record<string, string>;
   onParams: (next: Record<string, string | undefined>) => Promise<void>;
   active: number;
-  /** Région picker, for the départements list only. */
+  /** Région picker, for the whole of France only (a département is already in one région). */
   regions: { code: string; name: string }[] | null;
 };
 
-const Field = ({ name, label, unit, params, onParams }: { name: string; label: string; unit: string } & Pick<Props, 'params' | 'onParams'>) => {
+type ParamProps = Pick<Props, 'params' | 'onParams'>;
+
+/** A number input bound to one URL key; `key` resets it when the URL changes from elsewhere (reset, back). */
+const ParamInput = ({ name, label, placeholder, params, onParams }: { name: string; label: string; placeholder?: string } & ParamProps) => {
   const commit = (value: string) => onParams({ [name]: value.trim() || undefined });
   return (
-    <FilterField label={label}>
-      <span className="cy-unit">
-        <input
-          key={params[name] ?? ''}
-          className="cy-input num"
-          inputMode="decimal"
-          aria-label={label}
-          defaultValue={params[name] ?? ''}
-          onBlur={(e) => commit(e.target.value)}
-          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && commit(e.currentTarget.value)}
-          style={{ width: 84 }}
-        />
-        <span className="ink-3">{unit}</span>
-      </span>
-    </FilterField>
+    <input
+      key={params[name] ?? ''}
+      className="cy-input num"
+      inputMode="decimal"
+      aria-label={label}
+      placeholder={placeholder}
+      defaultValue={params[name] ?? ''}
+      onBlur={(e) => commit(e.target.value)}
+      onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && commit(e.currentTarget.value)}
+    />
   );
 };
 
+const Single = ({ name, label, unit, ...rest }: { name: string; label: string; unit: string } & ParamProps) => (
+  <FilterField label={label}>
+    <span className="cy-more-single">
+      <ParamInput name={name} label={`${label} (${unit})`} {...rest} />
+      <span className="ink-3">{unit}</span>
+    </span>
+  </FilterField>
+);
+
+const Range = ({ min, max, label, unit, ...rest }: { min: string; max: string; label: string; unit: string } & ParamProps) => (
+  <FilterField label={label}>
+    <span className="cy-more-range">
+      <ParamInput name={min} label={`${label} minimum (${unit})`} placeholder="min" {...rest} />
+      <span className="ink-3" aria-hidden>–</span>
+      <ParamInput name={max} label={`${label} maximum (${unit})`} placeholder="max" {...rest} />
+      <span className="ink-3">{unit}</span>
+    </span>
+  </FilterField>
+);
+
 export const ScreenFilterPanel = ({ params, onParams, active, regions }: Props) => {
   const [open, setOpen] = useState(active > 0);
-  const field = (name: string, label: string, unit: string) => <Field name={name} label={label} unit={unit} params={params} onParams={onParams} />;
+  const bind = { params, onParams };
   return (
-    <Panel
-      span={12}
-      title={`Filtres${active ? ` · ${active} actif${active > 1 ? 's' : ''}` : ''}`}
-      tools={
-        <div style={{ display: 'flex', gap: 6 }}>
-          {active > 0 && (
-            <button type="button" className="cy-button ghost" onClick={() => onParams(Object.fromEntries(SCREEN_FILTER_KEYS.map((k) => [k, undefined])))}>
-              Réinitialiser
-            </button>
-          )}
-          <button type="button" className="cy-button ghost" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {open ? 'Masquer' : 'Afficher'}
+    <div className="cy-more">
+      <div className="cy-more-head">
+        <button type="button" className="cy-more-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <span aria-hidden className="cy-more-caret">{open ? '▾' : '▸'}</span>
+          Plus de filtres
+          {active > 0 && <span className="cy-badge">{active} actif{active > 1 ? 's' : ''}</span>}
+        </button>
+        {active > 0 && (
+          <button type="button" className="cy-more-reset" onClick={() => onParams(Object.fromEntries(SCREEN_FILTER_KEYS.map((k) => [k, undefined])))}>
+            Réinitialiser
           </button>
-        </div>
-      }>
+        )}
+      </div>
       {open && (
-        <div className="cy-filters" style={{ border: 0, padding: 0 }}>
-          {field('budget', 'Budget (bien type)', '€')}
-          {field('pmin', 'Prix min', '€/m²')}
-          {field('pmax', 'Prix max', '€/m²')}
-          {field('ymin', 'Rendement min', '%')}
-          {field('ymax', 'Rendement max', '%')}
+        <div className="cy-more-body">
+          <Single name="budget" label="Budget (bien type)" unit="€" {...bind} />
+          <Range min="pmin" max="pmax" label="Prix au m²" unit="€/m²" {...bind} />
+          <Range min="ymin" max="ymax" label="Rendement brut" unit="%" {...bind} />
           <FilterField label="Cash-flow">
             <Segmented label="Cash-flow" options={[{ value: '', label: 'Tous' }, { value: 'pos', label: 'Positif' }]} value={params.cf === 'pos' ? 'pos' : ''}
               onChange={(v) => onParams({ cf: v || undefined })} />
           </FilterField>
-          {field('popmin', 'Population min', 'hab.')}
-          {field('popmax', 'Population max', 'hab.')}
-          {field('vacmax', 'Vacance max', '%')}
-          {field('fgmax', 'Passoires F/G max', '%')}
+          <Range min="popmin" max="popmax" label="Population" unit="hab." {...bind} />
+          <Single name="vacmax" label="Vacance max" unit="%" {...bind} />
+          <Single name="fgmax" label="Passoires F/G max" unit="%" {...bind} />
           <FilterField label="Encadrement des loyers">
             <Segmented label="Encadrement des loyers" options={[{ value: '', label: 'Tous' }, { value: 'in', label: 'Oui' }, { value: 'out', label: 'Non' }]}
               value={params.rc === 'in' || params.rc === 'out' ? params.rc : ''} onChange={(v) => onParams({ rc: v || undefined })} />
@@ -85,6 +98,6 @@ export const ScreenFilterPanel = ({ params, onParams, active, regions }: Props) 
           )}
         </div>
       )}
-    </Panel>
+    </div>
   );
 };

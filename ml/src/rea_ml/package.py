@@ -80,7 +80,7 @@ pipeline_tag: tabular-regression
 license: mit
 tags: [real-estate, france, dvf, price-estimation, tabular-regression, lightgbm, shap]
 model-index:
-- name: {MODEL_NAME}
+- name: {config.model_name}
   results:
   - task: {{type: tabular-regression, name: Price per m² of French residential sales}}
     dataset: {{type: dvf, name: Demandes de valeurs foncières (DGFiP), out-of-time test {split['test']['from']} → {split['test']['to']}}}
@@ -90,14 +90,14 @@ model-index:
     - {{type: interval_coverage, value: {test['interval_coverage']:.4f}, name: P10–P90 interval coverage}}
 ---
 
-# {MODEL_NAME}
+# {config.model_name}
 
 Estimates the market price of a French apartment or house (€/m² and total) from its
 characteristics and location, with an 80 % interval and an exact explanation of each estimate.
 Built to answer one question: **is the asked price of this property consistent with what the
 market has paid for similar properties nearby?**
 
-> Version {provenance['version']}. Part of the Cyfouri project (French rental-investment analytics).
+> Version {provenance['version']}. Part of SquareYield, a CYFOURI app (French rental-investment analytics).
 
 ## What it learned from
 - **Data:** every single-dwelling residential sale in DVF (signed notarial deeds, DGFiP) from
@@ -182,7 +182,7 @@ def write_package(result: TrainingResult, config: Config, folder: Path) -> Path:
         )
 
     spec = {
-        "model": MODEL_NAME,
+        "model": config.model_name,
         "target": "log(price_m2) minus département half-year index; prediction = latest market level",
         "reference_period": result.time_index.reference_period,
         "feature_columns": result.feature_columns,

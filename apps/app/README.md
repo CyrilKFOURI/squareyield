@@ -1,4 +1,4 @@
-# Cyfouri app (web + iOS/Android)
+# SquareYield app (web + iOS/Android)
 
 Expo SDK 58 + Expo Router. Every dashboard screen is an Expo DOM component (`src/web/screens`, `'use dom'`):
 React DOM + CSS on the web, the same screen in a webview on iOS and Android. The app only reads the KPI

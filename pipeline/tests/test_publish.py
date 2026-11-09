@@ -134,7 +134,7 @@ def serve(tmp_path: Path) -> Path:
 
 
 def _place(serve: Path, level: str, code: str) -> dict:
-    return json.loads((serve / "geo" / level / f"{code}.json").read_text(encoding="utf-8"))
+    return json.loads((serve / "geo" / level / code[:2] / f"{code}.json").read_text(encoding="utf-8"))
 
 
 def test_schema_and_fields(serve):
@@ -193,12 +193,22 @@ def test_neighbours_nearest_first_without_itself(serve):
     assert neighbours[0][1] == "Avrillé" and 3 < neighbours[0][2] < 6
 
 
+def test_neighbours_carry_their_figures_so_the_page_loads_no_points_file(serve):
+    place = _place(serve, "commune", "49007")
+    code, name, km, level, lon, lat, figures = place["neighbours"][0]
+    assert level == "commune" and -1 < lon < 0 and 47 < lat < 48
+    n, price, yoy, gross_yield = figures["apartment"]
+    assert n == 50 and price > 0
+    assert "house" not in figures  # no published house cell for Avrillé
+    assert len(place["point"]) == 2
+
+
 def test_index_and_small_places(serve):
     # Paris commune has n=9 < 10: not published; the others are
-    assert not (serve / "geo" / "commune" / "75056.json").exists()
+    assert not (serve / "geo" / "commune" / "75" / "75056.json").exists()
     index = json.loads((serve / "index.json").read_text(encoding="utf-8"))
     assert [place[2] for place in index["places"]][:1] == ["Angers"]
-    assert json.loads((serve / "geo" / "france" / "FR.json").read_text())["name"] == "France"
+    assert json.loads((serve / "geo" / "france" / "FR" / "FR.json").read_text())["name"] == "France"
 
 
 def test_regions_and_departements_are_named(serve):

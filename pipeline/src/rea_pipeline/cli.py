@@ -12,7 +12,8 @@ from datetime import datetime, timezone
 
 import duckdb
 
-from . import clean, dpe, geo, ingest, insee, localtax, mapdata, marts, oll, paths, publish, refs, rents, scores, validate
+from . import (clean, dpe, geo, ingest, insee, localtax, mapdata, marts, oll, paths, publish, refs, rents, sales,
+               sales_static, scores, validate)
 
 PUBLISHED_PRICE_KPIS = paths.MARTS / "kpi_price.parquet"
 PUBLISHED_YIELD_KPIS = paths.MARTS / "kpi_yield.parquet"
@@ -27,6 +28,8 @@ PUBLISHED_STOCK = paths.MARTS / "kpi_stock.parquet"
 COMMUNE_POINTS = paths.MARTS / "commune_point.parquet"
 RENT_CURVES = paths.MARTS / "rent_child.parquet"
 CLEAN_SALES = paths.CLEAN / "dvf" / "sales.parquet"
+LOCAL_SALES = paths.LOCAL / "sales.parquet"
+STATIC_SALES = paths.SERVE / "sales"
 APP_PUBLIC_DATA = paths.ROOT.parent / "apps" / "app" / "public" / "data"
 
 
@@ -160,6 +163,10 @@ def build_dvf(skip_ingest: bool) -> int:
             con.execute(f"COPY {table} TO '{nxt.as_posix()}' (FORMAT parquet)")
             nxt.replace(target)
         stage("S5 publish json", publish.publish(con, marts.MIN_PUBLISHED_SALES, run_id))
+        # local only (feature 019): never published, never read by the price model
+        stage("S6 local sales", sales.build(con, ingest.dvf_files(), geo.geo_dvf_files(), LOCAL_SALES))
+        # feature 022: the same sales as static per-commune files for the app (no lot numbers)
+        stage("S6 static sales", sales_static.export(LOCAL_SALES, STATIC_SALES)["files"])
         report["status"] = "success"
     except GateFailed as failed:
         report["status"] = f"failed at gate {failed}"
@@ -215,6 +222,34 @@ def auto_update() -> int:
     return status
 
 
+def build_local_sales() -> int:
+    """data/local/sales.parquet from the cleaned sales and the raw files already downloaded (no download)."""
+    if not CLEAN_SALES.exists():
+        print(f"{CLEAN_SALES} missing: run `uv run rea build` first", file=sys.stderr)
+        return 1
+    started = time.perf_counter()
+    con = duckdb.connect()
+    refs.build_commune_map(con, ingest.communes_file())
+    con.execute(f"CREATE VIEW dvf_sales AS SELECT * FROM '{CLEAN_SALES.as_posix()}'")
+    n = sales.build(con, ingest.dvf_files(), geo.geo_dvf_files(), LOCAL_SALES)
+    size_mb = LOCAL_SALES.stat().st_size / 1e6
+    print(f"{n} sales written to {LOCAL_SALES} ({size_mb:.0f} MB) in {time.perf_counter() - started:.0f}s")
+    return 0
+
+
+def build_static_sales() -> int:
+    """data/serve/sales/<code>.json from data/local/sales.parquet (feature 022)."""
+    if not LOCAL_SALES.exists():
+        print(f"{LOCAL_SALES} missing: run `uv run rea sales` first", file=sys.stderr)
+        return 1
+    started = time.perf_counter()
+    stats = sales_static.export(LOCAL_SALES, STATIC_SALES)
+    print(f"{stats['files']} files written to {STATIC_SALES} ({stats['bytes'] / 1e6:.1f} MB raw) in "
+          f"{time.perf_counter() - started:.0f}s; biggest {stats['biggest']}.json "
+          f"{stats['biggest_bytes'] / 1e6:.2f} MB raw, {stats.get('biggest_gzip_bytes', 0) / 1e6:.2f} MB gzipped")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="rea")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -226,6 +261,8 @@ def main() -> None:
     sub.add_parser("publish", help="S5 only: rebuild data/serve from the published marts")
     sub.add_parser("auto", help="scheduled run: rebuild only if an upstream source changed")
     sub.add_parser("locations", help="rebuild and export section/commune points from geo-DVF only")
+    sub.add_parser("sales", help="rebuild data/local/sales.parquet (sale by sale, local API only) from clean")
+    sub.add_parser("sales-static", help="write data/serve/sales/<code>.json (per-commune sales for the app)")
     args = parser.parse_args()
 
     if args.command == "build":
@@ -256,6 +293,10 @@ def main() -> None:
         geo.build_location_tables(con, geo.geo_dvf_files())
         geo.export_location_tables(con, paths.MARTS)
         print(f"Exported section_point and commune_point to {paths.MARTS}")
+    if args.command == "sales":
+        sys.exit(build_local_sales())
+    if args.command == "sales-static":
+        sys.exit(build_static_sales())
     if args.command == "sync-app":
         publish.sync_app(APP_PUBLIC_DATA)
         print(f"Copied {paths.SERVE} -> {APP_PUBLIC_DATA}")
